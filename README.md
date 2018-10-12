@@ -12,4 +12,5 @@ The folowing process is described for Visual Studio 2017 in x64 release mode. Fo
 7. Make sure "Configuration Properties / C/C++ / Language / C++ Language Standard" is set to ISO C++ 17
 7. Make sure "Configuration Properties / Linker / Input / Additional Dependencies" includes libfbxsdk.lib and LibSWBF2.lib
 8. Download or compile the LibSWBF2.dll and copy it to the output directory of MSH2FBX (default: MSH2FBX\x64\Release)
+9. Make sure a copy of libfbxsdk.dll (default: C:\Program Files\Autodesk\FBX\FBX SDK\2019.0\lib\vs2015\x64\release) exists in the output directory of MSH2FBX (default: MSH2FBX\x64\Release)
 9. Compile MSH2FBX
