@@ -1,9 +1,9 @@
-# MSH 2 FBX
+# MSH to FBX Converter
 
 The folowing process is described for x64 release mode. For other build modes, adapt the options respectively.
 <br />
 1. Download FBX SDK (if not already)
-2. Clone LibSWBF2 repository (if not already)
+2. Clone [LibSWBF2](https://github.com/Ben1138/LibSWBF2) repository (if not already)
 3. In "Configuration Properties / C/C++ / General" Add path to "Additional Include Directories" pointing at the FBX SDK include directory (default: C:\Program Files\Autodesk\FBX\FBX SDK\2019.0\include)
 4. In "Configuration Properties / C/C++ / General" Add path to "Additional Include Directories" pointing at the LibSWBF2.DLL directory (to find in LibSWBF2 repository)
 5. In "Configuration Properties / Linker / General" Add path to "Additional Library Directories" pointing at the appropriate FBX SDK library directory (default: C:\Program Files\Autodesk\FBX\FBX SDK\2019.0\lib\vs2015\x64\release)
