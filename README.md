@@ -2,7 +2,7 @@
 
 The folowing process is described for x64 release mode. For other build modes, adapt the options respectively.
 <br />
-1. Download FBX SDK (if not already)
+1. Download [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2019-0) (if not already)
 2. Clone [LibSWBF2](https://github.com/Ben1138/LibSWBF2) repository (if not already)
 3. In "Configuration Properties / C/C++ / General" Add path to "Additional Include Directories" pointing at the FBX SDK include directory (default: C:\Program Files\Autodesk\FBX\FBX SDK\2019.0\include)
 4. In "Configuration Properties / C/C++ / General" Add path to "Additional Include Directories" pointing at the LibSWBF2.DLL directory (to find in LibSWBF2 repository)
