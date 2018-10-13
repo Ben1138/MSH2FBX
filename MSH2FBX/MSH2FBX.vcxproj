@@ -157,10 +157,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Converter.h" />
+    <ClInclude Include="MSH2FBX.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="req.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Converter.cpp" />
     <ClCompile Include="MSH2FBX.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
