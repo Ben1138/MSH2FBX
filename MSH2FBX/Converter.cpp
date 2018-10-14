@@ -66,7 +66,29 @@ namespace MSH2FBX
 		for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
 		{
 			MODL& model = msh->m_MeshBlock.m_Models[i];
+			FbxNode* modelNode = nullptr;
 
+			// Get FbxNode of the model (child)
+			auto it = MODLToNodeMap.find(&model);
+			if (it != MODLToNodeMap.end())
+			{
+				if (it->second != nullptr)
+				{
+					modelNode = it->second;
+				}
+				else
+				{
+					Log("MODL '" + model.m_Parent.m_Text + "' has been mapped to NULL!");
+					continue;
+				}
+			}
+			else
+			{
+				Log("No FbxNode has been created for MODL '" + model.m_Parent.m_Text + "' ! This should never happen!");
+				continue;
+			}
+
+			// Change parentship (if any)
 			if (model.m_Parent.m_Text != "")
 			{
 				// Get FBXNode of Parent
@@ -74,30 +96,16 @@ namespace MSH2FBX
 
 				if (parentNode != nullptr)
 				{
-					// Get FbxNode of the model (child)
-					auto it = MODLToNodeMap.find(&model);
-					if (it != MODLToNodeMap.end())
-					{
-						if (it->second != nullptr)
-						{
-							rootNode->RemoveChild(it->second);
-							parentNode->AddChild(it->second);
-						}
-						else
-						{
-							Log("MODL '" + model.m_Parent.m_Text + "' has been mapped to NULL!");
-						}
-					}
-					else
-					{
-						Log("No FbxNode has been created for MODL '"+ model.m_Parent.m_Text +"' ! This should never happen!");
-					}
+					rootNode->RemoveChild(modelNode);
+					parentNode->AddChild(modelNode);
 				}
 				else
 				{
 					Log("Parent Node '"+ model.m_Parent.m_Text +"' not found!");
 				}
 			}
+
+			ApplyTransform(model, modelNode);
 		}
 
 		// Export Scene to FBX
@@ -123,6 +131,40 @@ namespace MSH2FBX
 		manager->Destroy();
 
 		return true;
+	}
+
+	void Converter::ApplyTransform(const MODL& model, FbxNode* meshNode)
+	{
+		// Applying MODL Transform to FbxNode
+		meshNode->LclTranslation.Set
+		(
+			FbxDouble3
+			(
+				model.m_Transition.m_Translation.m_X,
+				model.m_Transition.m_Translation.m_Y,
+				model.m_Transition.m_Translation.m_Z
+			)
+		);
+
+		FbxQuaternion rot;
+		rot.Set
+		(
+			model.m_Transition.m_Rotation.m_X,
+			model.m_Transition.m_Rotation.m_Y,
+			model.m_Transition.m_Rotation.m_Z,
+			model.m_Transition.m_Rotation.m_W
+		);
+		meshNode->LclRotation.Set(rot.DecomposeSphericalXYZ());
+
+		meshNode->LclScaling.Set
+		(
+			FbxDouble3
+			(
+				model.m_Transition.m_Scale.m_X,
+				model.m_Transition.m_Scale.m_Y,
+				model.m_Transition.m_Scale.m_Z
+			)
+		);
 	}
 
 	FbxDouble3 Converter::ColorToFBXColor(const Color& color)

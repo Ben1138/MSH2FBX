@@ -14,6 +14,7 @@ namespace MSH2FBX
 		static bool SaveAsFBX(MSH* msh, const string& fbxFileName);
 
 	private:
+		static void ApplyTransform(const MODL& model, FbxNode* meshNode);
 		static FbxDouble3 ColorToFBXColor(const Color& color);
 		static bool MATDToFBXMaterial(FbxManager* manager, const MATD& material, FbxNode* meshNode, int& matIndex);
 		static bool MODLToFBXMesh(FbxManager* manager, MODL& model, MATL& materials, FbxNode* meshNode);
