@@ -32,6 +32,8 @@ namespace MSH2FBX
 			return false;
 		}
 
+		map<MODL*, FbxNode*> MODLToNodeMap;
+
 		// Overall FBX (memory) manager
 		FbxManager* manager = FbxManager::Create();
 
@@ -43,18 +45,58 @@ namespace MSH2FBX
 		for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
 		{
 			MODL& model = msh->m_MeshBlock.m_Models[i];
-
 			// Create Node to attach mesh to
 			FbxNode* meshNode = FbxNode::Create(manager, model.m_Name.m_Text.c_str());
-			meshNode->SetShadingMode(FbxNode::eTextureShading);
 			rootNode->AddChild(meshNode);
-			Scene->AddNode(meshNode);
 
 			// Create and attach Mesh
-			if (!MODLToFBXMesh(manager, msh->m_MeshBlock.m_Models[i], msh->m_MeshBlock.m_MaterialList, meshNode))
+			if (MODLToFBXMesh(manager, model, msh->m_MeshBlock.m_MaterialList, meshNode))
+			{
+				MODLToNodeMap[&model] = meshNode;
+			}
+			else
 			{
 				Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string(model.m_ModelType.m_ModelType));
 				continue;
+			}
+		}
+
+		// Applying parentship
+		// Maybe doing something more efficient in the future?
+		for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
+		{
+			MODL& model = msh->m_MeshBlock.m_Models[i];
+
+			if (model.m_Parent.m_Text != "")
+			{
+				// Get FBXNode of Parent
+				FbxNode* parentNode = rootNode->FindChild(model.m_Parent.m_Text.c_str());
+
+				if (parentNode != nullptr)
+				{
+					// Get FbxNode of the model (child)
+					auto it = MODLToNodeMap.find(&model);
+					if (it != MODLToNodeMap.end())
+					{
+						if (it->second != nullptr)
+						{
+							rootNode->RemoveChild(it->second);
+							parentNode->AddChild(it->second);
+						}
+						else
+						{
+							Log("MODL '" + model.m_Parent.m_Text + "' has been mapped to NULL!");
+						}
+					}
+					else
+					{
+						Log("No FbxNode has been created for MODL '"+ model.m_Parent.m_Text +"' ! This should never happen!");
+					}
+				}
+				else
+				{
+					Log("Parent Node '"+ model.m_Parent.m_Text +"' not found!");
+				}
 			}
 		}
 
