@@ -63,7 +63,7 @@ namespace MSH2FBX
 		FbxIOSettings* settings = FbxIOSettings::Create(manager, IOSROOT);
 		manager->SetIOSettings(settings);
 
-		if (!exporter->Initialize("test.fbx", -1, manager->GetIOSettings()))
+		if (!exporter->Initialize(fbxFileName.c_str(), -1, manager->GetIOSettings()))
 		{
 			Log("Initializing export failed!");
 		}
@@ -181,7 +181,6 @@ namespace MSH2FBX
 						{
 							Log("Could not convert MSH Material '" + mshMat.m_Name.m_Text + "' to FbxMaterial!");
 						}
-
 					}
 
 					mesh->BeginPolygon(fbxMatIndex);
