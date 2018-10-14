@@ -49,16 +49,17 @@ namespace MSH2FBX
 			FbxNode* meshNode = FbxNode::Create(manager, model.m_Name.m_Text.c_str());
 			rootNode->AddChild(meshNode);
 
-			// Create and attach Mesh
-			if (MODLToFBXMesh(manager, model, msh->m_MeshBlock.m_MaterialList, meshNode))
+			if (model.m_ModelType.m_ModelType != EModelType::Null && model.m_ModelType.m_ModelType != EModelType::Envelope)
 			{
-				MODLToNodeMap[&model] = meshNode;
+				// Create and attach Mesh
+				if (!MODLToFBXMesh(manager, model, msh->m_MeshBlock.m_MaterialList, meshNode))
+				{
+					Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string(model.m_ModelType.m_ModelType));
+					continue;
+				}
 			}
-			else
-			{
-				Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string(model.m_ModelType.m_ModelType));
-				continue;
-			}
+
+			MODLToNodeMap[&model] = meshNode;
 		}
 
 		// Applying parentship
