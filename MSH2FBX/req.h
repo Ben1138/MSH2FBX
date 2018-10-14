@@ -10,6 +10,7 @@
 #include <cmath>
 #include <algorithm>
 #include <functional>
+#include <map>
 
 namespace MSH2FBX
 {
@@ -19,4 +20,5 @@ namespace MSH2FBX
 	using std::queue;
 	using std::unique_ptr;
 	using std::function;
+	using std::map;
 }
