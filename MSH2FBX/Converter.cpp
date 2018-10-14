@@ -40,9 +40,9 @@ namespace MSH2FBX
 		FbxNode* rootNode = Scene->GetRootNode();
 
 		// Converting Models
-		for (size_t i = 0; i < msh->m_MSH2.m_Models.size(); ++i)
+		for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
 		{
-			MODL& model = msh->m_MSH2.m_Models[i];
+			MODL& model = msh->m_MeshBlock.m_Models[i];
 
 			// Create Node to attach mesh to
 			FbxNode* meshNode = FbxNode::Create(manager, model.m_Name.m_Text.c_str());
@@ -51,7 +51,7 @@ namespace MSH2FBX
 			Scene->AddNode(meshNode);
 
 			// Create and attach Mesh
-			if (!MODLToFBXMesh(manager, msh->m_MSH2.m_Models[i], msh->m_MSH2.m_MaterialList, meshNode))
+			if (!MODLToFBXMesh(manager, msh->m_MeshBlock.m_Models[i], msh->m_MeshBlock.m_MaterialList, meshNode))
 			{
 				Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string(model.m_ModelType.m_ModelType));
 				continue;
