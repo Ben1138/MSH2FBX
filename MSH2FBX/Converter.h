@@ -18,6 +18,7 @@ namespace MSH2FBX
 		static FbxDouble3 ColorToFBXColor(const Color& color);
 		static bool MATDToFBXMaterial(const MATD& material, FbxNode* meshNode, int& matIndex);
 		static bool MODLToFBXMesh(MODL& model, MATL& materials, FbxNode* meshNode);
+		static bool MODLToFBXSkeleton(MODL& model, FbxNode* boneNode);
 
 		static FbxScene* Scene;
 		static FbxManager* Manager;
