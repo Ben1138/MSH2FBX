@@ -4,7 +4,7 @@
 namespace MSH2FBX
 {
 	FbxScene* Converter::Scene = nullptr;
-
+	FbxManager* Converter::Manager = nullptr;
 
 	string Converter::GetPlainName(const string& fileName)
 	{
@@ -26,6 +26,12 @@ namespace MSH2FBX
 			return false;
 		}
 
+		if (Manager != nullptr)
+		{
+			Log("Manager is not NULL! Something went terribly wrong...");
+			return false;
+		}
+
 		if (msh == nullptr)
 		{
 			Log("Given MSH is NULL!");
@@ -35,10 +41,10 @@ namespace MSH2FBX
 		map<MODL*, FbxNode*> MODLToNodeMap;
 
 		// Overall FBX (memory) manager
-		FbxManager* manager = FbxManager::Create();
+		Manager = FbxManager::Create();
 
 		// Create FBX Scene
-		Scene = FbxScene::Create(manager, GetPlainName(fbxFileName).c_str());
+		Scene = FbxScene::Create(Manager, GetPlainName(fbxFileName).c_str());
 		FbxNode* rootNode = Scene->GetRootNode();
 
 		// Converting Models
@@ -46,20 +52,20 @@ namespace MSH2FBX
 		{
 			MODL& model = msh->m_MeshBlock.m_Models[i];
 			// Create Node to attach mesh to
-			FbxNode* meshNode = FbxNode::Create(manager, model.m_Name.m_Text.c_str());
-			rootNode->AddChild(meshNode);
+			FbxNode* modelNode = FbxNode::Create(Manager, model.m_Name.m_Text.c_str());
+			rootNode->AddChild(modelNode);
 
 			if (model.m_ModelType.m_ModelType != EModelType::Null && model.m_ModelType.m_ModelType != EModelType::Envelope)
 			{
 				// Create and attach Mesh
-				if (!MODLToFBXMesh(manager, model, msh->m_MeshBlock.m_MaterialList, meshNode))
+				if (!MODLToFBXMesh(model, msh->m_MeshBlock.m_MaterialList, modelNode))
 				{
 					Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string(model.m_ModelType.m_ModelType));
 					continue;
 				}
 			}
 
-			MODLToNodeMap[&model] = meshNode;
+			MODLToNodeMap[&model] = modelNode;
 		}
 
 		// Applying parentship
@@ -110,11 +116,11 @@ namespace MSH2FBX
 		}
 
 		// Export Scene to FBX
-		FbxExporter* exporter = FbxExporter::Create(manager, "");
-		FbxIOSettings* settings = FbxIOSettings::Create(manager, IOSROOT);
-		manager->SetIOSettings(settings);
+		FbxExporter* exporter = FbxExporter::Create(Manager, "");
+		FbxIOSettings* settings = FbxIOSettings::Create(Manager, IOSROOT);
+		Manager->SetIOSettings(settings);
 
-		if (!exporter->Initialize(fbxFileName.c_str(), -1, manager->GetIOSettings()))
+		if (!exporter->Initialize(fbxFileName.c_str(), -1, Manager->GetIOSettings()))
 		{
 			Log("Initializing export failed!");
 		}
@@ -129,7 +135,9 @@ namespace MSH2FBX
 		Scene = nullptr;
 		
 		exporter->Destroy();
-		manager->Destroy();
+
+		Manager->Destroy();
+		Manager = nullptr;
 
 		return true;
 	}
@@ -173,8 +181,14 @@ namespace MSH2FBX
 		return FbxDouble3(color.m_Red, color.m_Green, color.m_Blue);
 	}
 
-	bool Converter::MATDToFBXMaterial(FbxManager* manager, const MATD& material, FbxNode* meshNode, int& matIndex)
+	bool Converter::MATDToFBXMaterial(const MATD& material, FbxNode* meshNode, int& matIndex)
 	{
+		if (Manager == nullptr)
+		{
+			Log("FbxManager is NULL!");
+			return false;
+		}
+
 		if (meshNode == nullptr)
 		{
 			Log("Given FbxNode is NULL!");
@@ -185,7 +199,7 @@ namespace MSH2FBX
 
 		if (matIndex < 0)
 		{
-			FbxSurfacePhong* fbxMaterial = FbxSurfacePhong::Create(manager, material.m_Name.m_Text.c_str());
+			FbxSurfacePhong* fbxMaterial = FbxSurfacePhong::Create(Manager, material.m_Name.m_Text.c_str());
 			fbxMaterial->Diffuse.Set(ColorToFBXColor(material.m_Data.m_Diffuse));
 			fbxMaterial->Ambient.Set(ColorToFBXColor(material.m_Data.m_Ambient));
 			fbxMaterial->Specular.Set(ColorToFBXColor(material.m_Data.m_Specular));
@@ -204,11 +218,11 @@ namespace MSH2FBX
 		return true;
 	}
 
-	bool Converter::MODLToFBXMesh(FbxManager* manager, MODL& model, MATL& materials, FbxNode* meshNode)
+	bool Converter::MODLToFBXMesh(MODL& model, MATL& materials, FbxNode* meshNode)
 	{
-		if (manager == nullptr)
+		if (Manager == nullptr)
 		{
-			Log("Given FbxManager is NULL!");
+			Log("FbxManager is NULL!");
 			return false;
 		}
 
@@ -218,7 +232,7 @@ namespace MSH2FBX
 			return false;
 		}
 
-		FbxMesh* mesh = FbxMesh::Create(manager, model.m_Name.m_Text.c_str());
+		FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.c_str());
 
 		vector<FbxVector4> vertices;
 		vector<FbxVector4> normals;
@@ -262,7 +276,7 @@ namespace MSH2FBX
 					{
 						MATD& mshMat = materials.m_Materials[segment.m_MaterialIndex.m_MaterialIndex];
 
-						if (!MATDToFBXMaterial(manager, mshMat, meshNode, fbxMatIndex))
+						if (!MATDToFBXMaterial(mshMat, meshNode, fbxMatIndex))
 						{
 							Log("Could not convert MSH Material '" + mshMat.m_Name.m_Text + "' to FbxMaterial!");
 						}
