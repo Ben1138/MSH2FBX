@@ -38,6 +38,7 @@ namespace MSH2FBX
 			return false;
 		}
 
+		bool success = true;
 		map<MODL*, FbxNode*> MODLToNodeMap;
 
 		// Overall FBX (memory) manager
@@ -120,14 +121,18 @@ namespace MSH2FBX
 		FbxIOSettings* settings = FbxIOSettings::Create(Manager, IOSROOT);
 		Manager->SetIOSettings(settings);
 
-		if (!exporter->Initialize(fbxFileName.c_str(), -1, Manager->GetIOSettings()))
+		if (exporter->Initialize(fbxFileName.c_str(), -1, Manager->GetIOSettings()))
+		{
+			if (!exporter->Export(Scene, false))
+			{
+				Log("Exporting failed!");
+				success = false;
+			}
+		}
+		else
 		{
 			Log("Initializing export failed!");
-		}
-
-		if (!exporter->Export(Scene, false))
-		{
-			Log("Exporting failed!");
+			success = false;
 		}
 
 		// Free all
@@ -139,7 +144,7 @@ namespace MSH2FBX
 		Manager->Destroy();
 		Manager = nullptr;
 
-		return true;
+		return success;
 	}
 
 	void Converter::ApplyTransform(const MODL& model, FbxNode* meshNode)
