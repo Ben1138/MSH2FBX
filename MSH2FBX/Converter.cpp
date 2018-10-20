@@ -54,6 +54,7 @@ namespace MSH2FBX
 
 		// Create FBX Scene
 		Scene = FbxScene::Create(Manager, GetPlainName(fbxFileName).c_str());
+		Scene->GetGlobalSettings().SetSystemUnit(FbxSystemUnit(100));	// 100 cm in a meter. we want meter as standard unit
 		FbxNode* rootNode = Scene->GetRootNode();
 
 		// Converting Models
