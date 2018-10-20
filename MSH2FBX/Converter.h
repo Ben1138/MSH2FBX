@@ -10,6 +10,8 @@ namespace MSH2FBX
 	class Converter
 	{
 	public:
+		static EModelPurpose IgnoreFilter;
+
 		static string GetPlainName(const string& fileName);
 		static bool SaveAsFBX(MSH* msh, const string& fbxFileName);
 
