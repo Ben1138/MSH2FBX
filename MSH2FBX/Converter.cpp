@@ -6,6 +6,14 @@ namespace MSH2FBX
 	FbxScene* Converter::Scene = nullptr;
 	FbxManager* Converter::Manager = nullptr;
 
+	EModelPurpose Converter::IgnoreFilter = (EModelPurpose)(
+		EModelPurpose::Mesh_ShadowVolume | 
+		EModelPurpose::Mesh_Lowrez | 
+		EModelPurpose::Mesh_Collision | 
+		EModelPurpose::Mesh_VehicleCollision | 
+		EModelPurpose::Mesh_TerrainCut
+	);
+
 	string Converter::GetPlainName(const string& fileName)
 	{
 		size_t lastindex = fileName.find_last_of(".");
@@ -52,27 +60,34 @@ namespace MSH2FBX
 		for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
 		{
 			MODL& model = msh->m_MeshBlock.m_Models[i];
+			EModelPurpose purpose = model.GetEstimatedPurpose();
+
+			// Do not process unwanted stuff
+			if ((purpose & IgnoreFilter) != 0)
+			{
+				Log("Skipping Model '"+model.m_Name.m_Text+"' according to filter");
+				continue;
+			}
+
 			// Create Node to attach mesh to
 			FbxNode* modelNode = FbxNode::Create(Manager, model.m_Name.m_Text.c_str());
 			rootNode->AddChild(modelNode);
-
-			EModelPurpose purpose = model.GetEstimatedPurpose();
-
-			if (purpose >= EModelPurpose::RegularMesh && purpose <= EModelPurpose::TerrainCut)
+			
+			if ((purpose & EModelPurpose::Mesh) != 0)
 			{
 				// Create and attach Mesh
 				if (!MODLToFBXMesh(model, msh->m_MeshBlock.m_MaterialList, modelNode))
 				{
-					Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string(model.m_ModelType.m_ModelType));
+					Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
 					continue;
 				}
 			}
-			else if (purpose >= EModelPurpose::SkeletonRoot && purpose <= EModelPurpose::BoneEnd)
+			if ((purpose & EModelPurpose::Skeleton) != 0)
 			{
 				// Create FBXSkeleton (Bones)
 				if (!MODLToFBXSkeleton(model, modelNode))
 				{
-					Log("Failed to convert MSH Model to FBX Skeleton. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string(model.m_ModelType.m_ModelType));
+					Log("Failed to convert MSH Model to FBX Skeleton. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
 					continue;
 				}
 			}
@@ -369,25 +384,25 @@ namespace MSH2FBX
 		EModelPurpose purpose = model.GetEstimatedPurpose();
 		FbxSkeleton* bone = FbxSkeleton::Create(Manager, model.m_Name.m_Text.c_str());
 
-		if (purpose == EModelPurpose::SkeletonRoot || purpose == EModelPurpose::BoneRoot)
+		if (purpose == EModelPurpose::Skeleton_Root || purpose == EModelPurpose::Skeleton_BoneRoot)
 		{
 			bone->SetSkeletonType(FbxSkeleton::eRoot);
 			Log("Converting '"+model.m_Name.m_Text+"' into Bone (Root)");
 		}
-		else if (purpose == EModelPurpose::BoneLimb)
+		else if (purpose == EModelPurpose::Skeleton_BoneLimb)
 		{
 			bone->SetSkeletonType(FbxSkeleton::eLimbNode);
 			//bone->Size.Set(1.0);
 			Log("Converting '" + model.m_Name.m_Text + "' into Bone (Limb)");
 		}
-		else if (purpose == EModelPurpose::BoneEnd)
+		else if (purpose == EModelPurpose::Skeleton_BoneEnd)
 		{
-			bone->SetSkeletonType(FbxSkeleton::eEffector);
+			bone->SetSkeletonType(FbxSkeleton::eLimbNode);
 			Log("Converting '" + model.m_Name.m_Text + "' into Bone (End)");
 		}
 		else
 		{
-			Log("No suitable Bone Type found for '" + model.m_Name.m_Text + "' ! Model Type is: " + std::to_string(model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + std::to_string(purpose));
+			Log("No suitable Bone Type found for '" + model.m_Name.m_Text + "' ! Model Type is: " + std::to_string((int)model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + std::to_string(purpose));
 			bone->Destroy();
 			return false;
 		}
