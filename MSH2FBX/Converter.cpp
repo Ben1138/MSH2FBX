@@ -5,16 +5,18 @@ namespace MSH2FBX
 {
 	FbxScene* Converter::Scene = nullptr;
 	FbxManager* Converter::Manager = nullptr;
-
-	EModelPurpose Converter::IgnoreFilter = (EModelPurpose)(
+	EChunkFilter Converter::ChunkFilter = EChunkFilter::None;
+	EModelPurpose Converter::ModelIgnoreFilter = (EModelPurpose)(
 		EModelPurpose::Mesh_ShadowVolume | 
 		EModelPurpose::Mesh_Lowrez | 
 		EModelPurpose::Mesh_Collision | 
 		EModelPurpose::Mesh_VehicleCollision | 
 		EModelPurpose::Mesh_TerrainCut
 	);
+	map<CRCChecksum, FbxNode*> Converter::CRCToFbxNode;
 
-	string Converter::GetPlainName(const string& fileName)
+
+	string Converter::GetPlainFileName(const string& fileName)
 	{
 		size_t lastindex = fileName.find_last_of(".");
 
@@ -47,100 +49,208 @@ namespace MSH2FBX
 		}
 
 		bool success = true;
-		map<MODL*, FbxNode*> MODLToNodeMap;
+		map<MODL*, FbxNode*> MODLToFbxNode;
+		CRCToFbxNode.clear();
 
 		// Overall FBX (memory) manager
 		Manager = FbxManager::Create();
 
 		// Create FBX Scene
-		Scene = FbxScene::Create(Manager, GetPlainName(fbxFileName).c_str());
-		Scene->GetGlobalSettings().SetSystemUnit(FbxSystemUnit(100));	// 100 cm in a meter. we want meter as standard unit
+		Scene = FbxScene::Create(Manager, GetPlainFileName(fbxFileName).c_str());
+		Scene->GetGlobalSettings().SetSystemUnit(FbxSystemUnit::m);
 		FbxNode* rootNode = Scene->GetRootNode();
 
 		// Converting Models
-		for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
+		if ((ChunkFilter & EChunkFilter::Models) == 0)
 		{
-			MODL& model = msh->m_MeshBlock.m_Models[i];
-			EModelPurpose purpose = model.GetEstimatedPurpose();
-
-			// Do not process unwanted stuff
-			if ((purpose & IgnoreFilter) != 0)
+			for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
 			{
-				Log("Skipping Model '"+model.m_Name.m_Text+"' according to filter");
-				continue;
-			}
+				MODL& model = msh->m_MeshBlock.m_Models[i];
+				EModelPurpose purpose = model.GetEstimatedPurpose();
 
-			// Create Node to attach mesh to
-			FbxNode* modelNode = FbxNode::Create(Manager, model.m_Name.m_Text.c_str());
-			rootNode->AddChild(modelNode);
-			
-			if ((purpose & EModelPurpose::Mesh) != 0)
-			{
-				// Create and attach Mesh
-				if (!MODLToFBXMesh(model, msh->m_MeshBlock.m_MaterialList, modelNode))
+				// Do not process unwanted stuff
+				if ((purpose & ModelIgnoreFilter) != 0)
 				{
-					Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
+					Log("Skipping Model '" + model.m_Name.m_Text + "' according to filter");
 					continue;
 				}
-			}
-			if ((purpose & EModelPurpose::Skeleton) != 0)
-			{
-				// Create FBXSkeleton (Bones)
-				if (!MODLToFBXSkeleton(model, modelNode))
+
+				// Create Node to attach mesh to
+				FbxNode* modelNode = FbxNode::Create(Manager, model.m_Name.m_Text.c_str());
+				rootNode->AddChild(modelNode);
+
+				if ((purpose & EModelPurpose::Mesh) != 0)
 				{
-					Log("Failed to convert MSH Model to FBX Skeleton. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
-					continue;
+					// Create and attach Mesh
+					if (!MODLToFBXMesh(model, msh->m_MeshBlock.m_MaterialList, modelNode))
+					{
+						Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
+						continue;
+					}
 				}
+				if ((purpose & EModelPurpose::Skeleton) != 0)
+				{
+					// Create FBXSkeleton (Bones)
+					if (!MODLToFBXSkeleton(model, modelNode))
+					{
+						Log("Failed to convert MSH Model to FBX Skeleton. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
+						continue;
+					}
+				}
+
+				MODLToFbxNode[&model] = modelNode;
 			}
 
-			MODLToNodeMap[&model] = modelNode;
-		}
-
-		// Applying parentship
-		// Maybe doing something more efficient in the future?
-		for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
-		{
-			MODL& model = msh->m_MeshBlock.m_Models[i];
-			FbxNode* modelNode = nullptr;
-
-			// Get FbxNode of the model (child)
-			auto it = MODLToNodeMap.find(&model);
-			if (it != MODLToNodeMap.end())
+			// Applying parentship
+			// Maybe doing something more efficient in the future?
+			for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
 			{
-				if (it->second != nullptr)
+				MODL& model = msh->m_MeshBlock.m_Models[i];
+				FbxNode* modelNode = nullptr;
+
+				// Get FbxNode of the model (child)
+				auto it = MODLToFbxNode.find(&model);
+				if (it != MODLToFbxNode.end())
 				{
-					modelNode = it->second;
+					if (it->second != nullptr)
+					{
+						modelNode = it->second;
+					}
+					else
+					{
+						Log("MODL '" + model.m_Parent.m_Text + "' has been mapped to NULL!");
+						continue;
+					}
 				}
 				else
 				{
-					Log("MODL '" + model.m_Parent.m_Text + "' has been mapped to NULL!");
+					Log("No FbxNode has been created for MODL '" + model.m_Parent.m_Text + "' ! This should never happen!");
 					continue;
 				}
+
+				// Change parentship (if any)
+				if (model.m_Parent.m_Text != "")
+				{
+					// Get FBXNode of Parent
+					FbxNode* parentNode = rootNode->FindChild(model.m_Parent.m_Text.c_str());
+
+					if (parentNode != nullptr)
+					{
+						rootNode->RemoveChild(modelNode);
+						parentNode->AddChild(modelNode);
+					}
+					else
+					{
+						Log("Parent Node '" + model.m_Parent.m_Text + "' not found!");
+					}
+				}
+
+				ApplyTransform(model, modelNode);
+			}
+		}
+
+		// Converting Animations
+		if ((ChunkFilter & EChunkFilter::Animations) == 0)
+		{
+			FbxAnimStack* animStack = FbxAnimStack::Create(Scene, "Animations");
+			Animation* anim = nullptr;
+
+			// should be temporary
+			for (size_t i = 0; i < msh->m_Animations.m_AnimationCycle.m_Animations.size(); ++i)
+			{
+				anim = &msh->m_Animations.m_AnimationCycle.m_Animations[i];
+				break;
+			}
+
+			if (!anim)
+			{
+				Log("No Animation Circle found!");
 			}
 			else
 			{
-				Log("No FbxNode has been created for MODL '" + model.m_Parent.m_Text + "' ! This should never happen!");
-				continue;
-			}
+				FbxAnimLayer* animLayer = FbxAnimLayer::Create(Scene, "Layer0");
+				animStack->AddMember(animLayer);
 
-			// Change parentship (if any)
-			if (model.m_Parent.m_Text != "")
-			{
-				// Get FBXNode of Parent
-				FbxNode* parentNode = rootNode->FindChild(model.m_Parent.m_Text.c_str());
-
-				if (parentNode != nullptr)
+				// for every bone...
+				for (size_t i = 0; i < msh->m_Animations.m_KeyFrames.m_BoneFrames.size(); ++i)
 				{
-					rootNode->RemoveChild(modelNode);
-					parentNode->AddChild(modelNode);
-				}
-				else
-				{
-					Log("Parent Node '"+ model.m_Parent.m_Text +"' not found!");
+					BoneFrames& bf = msh->m_Animations.m_KeyFrames.m_BoneFrames[i];
+					FbxNode* boneNode = nullptr;
+
+					// get respective Bone to animate from stored CRC checksum
+					auto it = CRCToFbxNode.find(bf.m_CRCchecksum);
+					if (it != CRCToFbxNode.end())
+					{
+						if (!it->second)
+						{
+							Log("CRC '"+ std::to_string(bf.m_CRCchecksum) +"' has been mapped to null pointer!");
+							continue;
+						}
+						boneNode = it->second;
+					}
+					else
+					{
+						Log("Could not find a Bone for CRC: " + std::to_string(bf.m_CRCchecksum));
+						continue;
+					}
+
+					// Translation
+					FbxAnimCurveNode* tranCurveNode = boneNode->LclTranslation.GetCurveNode(animLayer, true);
+					FbxAnimCurve* tranCurveX = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X, true);
+					FbxAnimCurve* tranCurveY = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y, true);
+					FbxAnimCurve* tranCurveZ = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z, true);
+
+					tranCurveX->KeyModifyBegin();
+					tranCurveY->KeyModifyBegin();
+					tranCurveZ->KeyModifyBegin();
+					for (size_t j = 0; j < bf.m_TranslationFrames.size(); ++j)
+					{
+						TranslationFrame& t = bf.m_TranslationFrames[j];
+
+						FbxTime time;
+						time.SetSecondDouble(t.m_FrameIndex / anim->m_FrameRate);
+						tranCurveX->KeySet(tranCurveX->KeyAdd(time), time, t.m_Translation.m_X, FbxAnimCurveDef::eInterpolationLinear);
+						tranCurveY->KeySet(tranCurveY->KeyAdd(time), time, t.m_Translation.m_Y, FbxAnimCurveDef::eInterpolationLinear);
+						tranCurveZ->KeySet(tranCurveZ->KeyAdd(time), time, t.m_Translation.m_Z, FbxAnimCurveDef::eInterpolationLinear);
+					}
+					tranCurveX->KeyModifyEnd();
+					tranCurveY->KeyModifyEnd();
+					tranCurveZ->KeyModifyEnd();
+
+					// Rotation
+					FbxAnimCurveNode* rotCurveNode = boneNode->LclRotation.GetCurveNode(animLayer, true);
+					FbxAnimCurve* rotCurveX = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X, true);
+					FbxAnimCurve* rotCurveY = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y, true);
+					FbxAnimCurve* rotCurveZ = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z, true);
+
+					rotCurveX->KeyModifyBegin();
+					rotCurveY->KeyModifyBegin();
+					rotCurveZ->KeyModifyBegin();
+					for (size_t j = 0; j < bf.m_RotationFrames.size(); ++j)
+					{
+						RotationFrame& t = bf.m_RotationFrames[j];
+
+						FbxQuaternion quaternion;
+						quaternion.Set
+						(
+							t.m_Rotation.m_X,
+							t.m_Rotation.m_Y,
+							t.m_Rotation.m_Z,
+							t.m_Rotation.m_W
+						);
+						FbxVector4 rot = quaternion.DecomposeSphericalXYZ();
+
+						FbxTime time;
+						time.SetSecondDouble(t.m_FrameIndex / anim->m_FrameRate);
+						rotCurveX->KeySet(rotCurveX->KeyAdd(time), time, rot[0], FbxAnimCurveDef::eInterpolationLinear);
+						rotCurveY->KeySet(rotCurveY->KeyAdd(time), time, rot[1], FbxAnimCurveDef::eInterpolationLinear);
+						rotCurveZ->KeySet(rotCurveZ->KeyAdd(time), time, rot[2], FbxAnimCurveDef::eInterpolationLinear);
+					}
+					rotCurveX->KeyModifyEnd();
+					rotCurveY->KeyModifyEnd();
+					rotCurveZ->KeyModifyEnd();
 				}
 			}
-
-			ApplyTransform(model, modelNode);
 		}
 
 		// Export Scene to FBX
@@ -308,7 +418,7 @@ namespace MSH2FBX
 					{
 						MATD& mshMat = materials.m_Materials[segment.m_MaterialIndex.m_MaterialIndex];
 
-						if (!MATDToFBXMaterial(mshMat, meshNode, fbxMatIndex))
+						if ((ChunkFilter & EChunkFilter::Materials) == 0 && !MATDToFBXMaterial(mshMat, meshNode, fbxMatIndex))
 						{
 							Log("Could not convert MSH Material '" + mshMat.m_Name.m_Text + "' to FbxMaterial!");
 						}
@@ -409,6 +519,11 @@ namespace MSH2FBX
 		}
 
 		boneNode->SetNodeAttribute(bone);
+
+		// generate crc checksum from name (should match those in msh file)
+		CRCChecksum crc = CRC::CalcLowerCRC(model.m_Name.m_Text.c_str());
+		CRCToFbxNode[crc] = boneNode;
+
 		return true;
 	}
 }
