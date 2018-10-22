@@ -32,6 +32,7 @@ namespace MSH2FBX
 	private:
 		static void ApplyTransform(const MODL& model, FbxNode* meshNode);
 		static FbxDouble3 ColorToFBXColor(const Color& color);
+		static void ANM2ToFBXAnimations(ANM2& animations);
 		static bool MATDToFBXMaterial(const MATD& material, FbxNode* meshNode, int& matIndex);
 		static bool MODLToFBXMesh(MODL& model, MATL& materials, FbxNode* meshNode);
 		static bool MODLToFBXSkeleton(MODL& model, FbxNode* boneNode);
