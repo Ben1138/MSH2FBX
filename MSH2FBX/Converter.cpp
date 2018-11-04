@@ -3,8 +3,11 @@
 
 namespace MSH2FBX
 {
+	string Converter::FbxFileName = "";
 	FbxScene* Converter::Scene = nullptr;
 	FbxManager* Converter::Manager = nullptr;
+	MSH* Converter::Mesh = nullptr;
+
 	EChunkFilter Converter::ChunkFilter = EChunkFilter::None;
 	EModelPurpose Converter::ModelIgnoreFilter = (EModelPurpose)(
 		EModelPurpose::Mesh_ShadowVolume | 
@@ -13,6 +16,8 @@ namespace MSH2FBX
 		EModelPurpose::Mesh_VehicleCollision | 
 		EModelPurpose::Mesh_TerrainCut
 	);
+
+	map<MODL*, FbxNode*> Converter::MODLToFbxNode;
 	map<CRCChecksum, FbxNode*> Converter::CRCToFbxNode;
 
 
@@ -28,29 +33,32 @@ namespace MSH2FBX
 		return fileName.substr(0, lastindex);
 	}
 
-	bool Converter::SaveAsFBX(MSH* msh, const string& fbxFileName)
+	bool Converter::Start(const string& fbxFileName)
 	{
 		if (Scene != nullptr)
 		{
-			Log("Scene is not NULL! Something went terribly wrong...");
+			Log("Scene is not NULL!");
 			return false;
 		}
 
 		if (Manager != nullptr)
 		{
-			Log("Manager is not NULL! Something went terribly wrong...");
+			Log("Manager is not NULL!");
 			return false;
 		}
 
-		if (msh == nullptr)
+		if (Mesh != nullptr)
 		{
-			Log("Given MSH is NULL!");
+			Log("Still a MSH present!");
 			return false;
 		}
 
-		bool success = true;
-		map<MODL*, FbxNode*> MODLToFbxNode;
-		CRCToFbxNode.clear();
+		if (FbxFileName != "")
+		{
+			Log("Still a Fbx File Name present!");
+		}
+
+		FbxFileName = fbxFileName;
 
 		// Overall FBX (memory) manager
 		Manager = FbxManager::Create();
@@ -58,14 +66,99 @@ namespace MSH2FBX
 		// Create FBX Scene
 		Scene = FbxScene::Create(Manager, GetPlainFileName(fbxFileName).c_str());
 		Scene->GetGlobalSettings().SetSystemUnit(FbxSystemUnit::m);
+		return true;
+	}
+
+	bool Converter::AddMSH(MSH* msh)
+	{
+		if (Mesh != nullptr)
+		{
+			Log("MSH is not NULL!");
+			return false;
+		}
+
+		MODLToFbxNode.clear();
+		CRCToFbxNode.clear();
+		Mesh = msh;
+
+		MSHToFBXScene();
+
+		Mesh = nullptr;
+		return true;
+	}
+
+	bool Converter::Save()
+	{
+		if (Scene == nullptr)
+		{
+			Log("Scene is NULL!");
+			return false;
+		}
+
+		if (Manager == nullptr)
+		{
+			Log("Manager is NULL!");
+			return false;
+		}
+
+		if (Mesh != nullptr)
+		{
+			Log("There is still a MSH in progress!");
+			return false;
+		}
+
+		if (FbxFileName == "")
+		{
+			Log("No Fbx File Name present!");
+		}
+
+		bool success = true;
+
+		// Export Scene to FBX
+		FbxExporter* exporter = FbxExporter::Create(Manager, "");
+		FbxIOSettings* settings = FbxIOSettings::Create(Manager, IOSROOT);
+		Manager->SetIOSettings(settings);
+
+		if (exporter->Initialize(FbxFileName.c_str(), -1, Manager->GetIOSettings()))
+		{
+			if (!exporter->Export(Scene, false))
+			{
+				Log("Exporting failed!");
+				success = false;
+			}
+		}
+		else
+		{
+			Log("Initializing export failed!");
+			success = false;
+		}
+
+		// Free all
+		Scene->Destroy();
+		Scene = nullptr;
+		
+		exporter->Destroy();
+
+		Manager->Destroy();
+		Manager = nullptr;
+
+		Mesh = nullptr;
+		FbxFileName = "";
+		return success;
+	}
+
+	void Converter::MSHToFBXScene()
+	{
 		FbxNode* rootNode = Scene->GetRootNode();
+
+		map<MODL*, FbxCluster*> BoneToCluster;
 
 		// Converting Models
 		if ((ChunkFilter & EChunkFilter::Models) == 0)
 		{
-			for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
+			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.size(); ++i)
 			{
-				MODL& model = msh->m_MeshBlock.m_Models[i];
+				MODL& model = Mesh->m_MeshBlock.m_Models[i];
 				EModelPurpose purpose = model.GetEstimatedPurpose();
 
 				// Do not process unwanted stuff
@@ -79,13 +172,21 @@ namespace MSH2FBX
 				FbxNode* modelNode = FbxNode::Create(Manager, model.m_Name.m_Text.c_str());
 				rootNode->AddChild(modelNode);
 
+				// generate crc checksum from name (should match those in msh file)
+				CRCChecksum crc = CRC::CalcLowerCRC(model.m_Name.m_Text.c_str());
+				CRCToFbxNode[crc] = modelNode;
+
 				if ((purpose & EModelPurpose::Mesh) != 0)
 				{
 					// Create and attach Mesh
-					if (!MODLToFBXMesh(model, msh->m_MeshBlock.m_MaterialList, modelNode))
+					if (!MODLToFBXMesh(model, Mesh->m_MeshBlock.m_MaterialList, modelNode))
 					{
 						Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
 						continue;
+					}
+					else
+					{
+						Log("converting " + model.m_Name.m_Text);
 					}
 				}
 				if ((purpose & EModelPurpose::Skeleton) != 0)
@@ -101,12 +202,19 @@ namespace MSH2FBX
 				MODLToFbxNode[&model] = modelNode;
 			}
 
-			// Applying parentship
+			// Applying parentship and weights
 			// Maybe doing something more efficient in the future?
-			for (size_t i = 0; i < msh->m_MeshBlock.m_Models.size(); ++i)
+			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.size(); ++i)
 			{
-				MODL& model = msh->m_MeshBlock.m_Models[i];
+				MODL& model = Mesh->m_MeshBlock.m_Models[i];
 				FbxNode* modelNode = nullptr;
+				EModelPurpose purpose = model.GetEstimatedPurpose();
+
+				// Do not process unwanted stuff
+				if ((purpose & ModelIgnoreFilter) != 0)
+				{
+					continue;
+				}
 
 				// Get FbxNode of the model (child)
 				auto it = MODLToFbxNode.find(&model);
@@ -146,44 +254,38 @@ namespace MSH2FBX
 				}
 
 				ApplyTransform(model, modelNode);
+
+				// Converting Weights
+				// Execute this AFTER all Bones (MODLs) are converted to FbxNodes!
+				if ((ChunkFilter & EChunkFilter::Weights) == 0 && (purpose & EModelPurpose::Mesh) != 0)
+				{
+					size_t vertexOffset = 0;
+
+					for (size_t i = 0; i < model.m_Geometry.m_Segments.size(); ++i)
+					{
+						SEGM& segment = model.m_Geometry.m_Segments[i];
+						WGHTToFBXSkin(segment.m_WeightList, model.m_Geometry.m_Envelope, modelNode, vertexOffset, BoneToCluster);
+						vertexOffset += segment.m_VertexList.m_Vertices.size();
+					}
+
+					FbxSkin* skin = FbxSkin::Create(Scene, string(model.m_Name.m_Text + "_Skin").c_str());
+
+					for (auto it = BoneToCluster.begin(); it != BoneToCluster.end(); it++)
+					{
+						skin->AddCluster(it->second);
+					}
+
+					FbxMesh* mesh = (FbxMesh*)modelNode->GetNodeAttribute();
+					mesh->AddDeformer(skin);
+				}
 			}
 		}
 
 		// Converting Animations
 		if ((ChunkFilter & EChunkFilter::Animations) == 0)
 		{
-			ANM2ToFBXAnimations(msh->m_Animations);
+			ANM2ToFBXAnimations(Mesh->m_Animations);
 		}
-
-		// Export Scene to FBX
-		FbxExporter* exporter = FbxExporter::Create(Manager, "");
-		FbxIOSettings* settings = FbxIOSettings::Create(Manager, IOSROOT);
-		Manager->SetIOSettings(settings);
-
-		if (exporter->Initialize(fbxFileName.c_str(), -1, Manager->GetIOSettings()))
-		{
-			if (!exporter->Export(Scene, false))
-			{
-				Log("Exporting failed!");
-				success = false;
-			}
-		}
-		else
-		{
-			Log("Initializing export failed!");
-			success = false;
-		}
-
-		// Free all
-		Scene->Destroy();
-		Scene = nullptr;
-		
-		exporter->Destroy();
-
-		Manager->Destroy();
-		Manager = nullptr;
-
-		return success;
 	}
 
 	void Converter::ApplyTransform(const MODL& model, FbxNode* meshNode)
@@ -224,10 +326,82 @@ namespace MSH2FBX
 	{
 		return FbxDouble3(color.m_Red, color.m_Green, color.m_Blue);
 	}
+	
+	void Converter::WGHTToFBXSkin(WGHT& weights, const ENVL& envelope, FbxNode* meshNode, const size_t vertexOffset, map<MODL*, FbxCluster*>& BoneToCluster)
+	{
+		if (Mesh == nullptr)
+		{
+			Log("Mesh (MSH) is NULL!");
+			return;
+		}
+
+		// for each vertex...
+		for (size_t i = 0; i < weights.m_Weights.size(); ++i)
+		{
+			// each vertex consist of 4 weights (for 4 bones)
+			for (int j = 0; j < weights.m_Weights[i].size(); ++j)
+			{
+				BoneWeight& weight = weights.m_Weights[i][j];
+				uint32_t& ei = weight.m_EnvelopeIndex;
+
+				if (ei < envelope.m_ModelIndices.size())
+				{
+					if (envelope.m_ModelIndices[ei] < Mesh->m_MeshBlock.m_Models.size())
+					{
+						MODL& bone = Mesh->m_MeshBlock.m_Models[envelope.m_ModelIndices[ei]];
+
+						auto it = MODLToFbxNode.find(&bone);
+						if (it != MODLToFbxNode.end())
+						{
+							FbxNode* BoneNode = it->second;
+							FbxCluster* cluster = nullptr;
+
+							auto it2 = BoneToCluster.find(&bone);
+							if (it2 != BoneToCluster.end())
+							{
+								cluster = it2->second;
+							}
+							else
+							{
+								cluster = FbxCluster::Create(Scene, string(bone.m_Name.m_Text + "_Cluster").c_str());
+								BoneToCluster[&bone] = cluster;
+							}
+
+							cluster->SetLink(BoneNode);
+
+							// TODO: do all 4 weights really add to to 1.0 in MSH? investigation needed!
+							cluster->SetLinkMode(FbxCluster::eTotalOne);
+							cluster->AddControlPointIndex((int)(i + vertexOffset), (double)weight.m_WeightValue);
+
+							// mesh node (root) transform matrix
+							FbxAMatrix matrix = meshNode->EvaluateGlobalTransform();
+							cluster->SetTransformMatrix(matrix);
+
+							// bone node transform matrix
+							matrix = BoneNode->EvaluateGlobalTransform();
+							cluster->SetTransformLinkMatrix(matrix);
+						}
+						else
+						{
+							Log("MODL (Bone) '" + bone.m_Parent.m_Text + "' has been mapped to NULL!");
+						}
+					}
+					else
+					{
+						Log("Model Index " + std::to_string(envelope.m_ModelIndices[i]) + " is out of Range " + std::to_string(Mesh->m_MeshBlock.m_Models.size()));
+					}
+				}
+				else
+				{
+					Log("Envelope Index " + std::to_string(weight.m_EnvelopeIndex) + " is out of Range " + std::to_string(envelope.m_ModelIndices.size()));
+				}
+			}
+		}
+	}
 
 	void Converter::ANM2ToFBXAnimations(ANM2& animations)
 	{
-		FbxAnimStack* animStack = FbxAnimStack::Create(Scene, "Animations");
+		FbxAnimStack* animStack = FbxAnimStack::Create(Scene, "Animation");
 		Animation* anim = nullptr;
 
 		// assuming only one animation per msh, this should be temporary
@@ -317,9 +491,9 @@ namespace MSH2FBX
 
 					FbxTime time;
 					time.SetSecondDouble(t.m_FrameIndex / anim->m_FrameRate);
-					rotCurveX->KeySet(rotCurveX->KeyAdd(time), time, rot[0], FbxAnimCurveDef::eInterpolationLinear);
-					rotCurveY->KeySet(rotCurveY->KeyAdd(time), time, rot[1], FbxAnimCurveDef::eInterpolationLinear);
-					rotCurveZ->KeySet(rotCurveZ->KeyAdd(time), time, rot[2], FbxAnimCurveDef::eInterpolationLinear);
+					rotCurveX->KeySet(rotCurveX->KeyAdd(time), time, (float)rot[0], FbxAnimCurveDef::eInterpolationLinear);
+					rotCurveY->KeySet(rotCurveY->KeyAdd(time), time, (float)rot[1], FbxAnimCurveDef::eInterpolationLinear);
+					rotCurveZ->KeySet(rotCurveZ->KeyAdd(time), time, (float)rot[2], FbxAnimCurveDef::eInterpolationLinear);
 				}
 				rotCurveX->KeyModifyEnd();
 				rotCurveY->KeyModifyEnd();
@@ -386,6 +560,8 @@ namespace MSH2FBX
 		vector<FbxVector2> uvs;
 		size_t vertexOffset = 0;
 
+		vector<FbxCluster*> boneClusters;
+
 		// crawl all Segments
 		for (size_t i = 0; i < model.m_Geometry.m_Segments.size(); ++i)
 		{
@@ -437,7 +613,7 @@ namespace MSH2FBX
 					mesh->EndPolygon();
 				}
 
-				// since in MSH segments vertices are local,
+				// since in MSH vertices are local in their respective segments,
 				// we have to store an offset because in FBX vertices are global
 				vertexOffset += segment.m_VertexList.m_Vertices.size();
 			}
@@ -524,10 +700,6 @@ namespace MSH2FBX
 		}
 
 		boneNode->SetNodeAttribute(bone);
-
-		// generate crc checksum from name (should match those in msh file)
-		CRCChecksum crc = CRC::CalcLowerCRC(model.m_Name.m_Text.c_str());
-		CRCToFbxNode[crc] = boneNode;
 
 		return true;
 	}
