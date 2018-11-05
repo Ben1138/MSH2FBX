@@ -33,6 +33,29 @@ namespace MSH2FBX
 		return fileName.substr(0, lastindex);
 	}
 
+	FbxNode* Converter::FindNode(MODL& model)
+	{
+		// Get FbxNode of the model (child)
+		auto it = MODLToFbxNode.find(&model);
+		if (it != MODLToFbxNode.end())
+		{
+			if (it->second != nullptr)
+			{
+				return it->second;
+			}
+			else
+			{
+				Log("MODL '" + model.m_Parent.m_Text + "' has been mapped to NULL!");
+				return nullptr;
+			}
+		}
+		else
+		{
+			Log("No FbxNode has been created for MODL '" + model.m_Parent.m_Text + "' ! This should never happen!");
+			return nullptr;
+		}
+	}
+
 	bool Converter::Start(const string& fbxFileName)
 	{
 		if (Scene != nullptr)
@@ -150,7 +173,6 @@ namespace MSH2FBX
 	void Converter::MSHToFBXScene()
 	{
 		FbxNode* rootNode = Scene->GetRootNode();
-
 		map<MODL*, FbxCluster*> BoneToCluster;
 
 		// Converting Models
@@ -212,7 +234,6 @@ namespace MSH2FBX
 			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.size(); ++i)
 			{
 				MODL& model = Mesh->m_MeshBlock.m_Models[i];
-				FbxNode* modelNode = nullptr;
 				EModelPurpose purpose = model.GetEstimatedPurpose();
 
 				// Do not process unwanted stuff
@@ -221,25 +242,7 @@ namespace MSH2FBX
 					continue;
 				}
 
-				// Get FbxNode of the model (child)
-				auto it = MODLToFbxNode.find(&model);
-				if (it != MODLToFbxNode.end())
-				{
-					if (it->second != nullptr)
-					{
-						modelNode = it->second;
-					}
-					else
-					{
-						Log("MODL '" + model.m_Parent.m_Text + "' has been mapped to NULL!");
-						continue;
-					}
-				}
-				else
-				{
-					Log("No FbxNode has been created for MODL '" + model.m_Parent.m_Text + "' ! This should never happen!");
-					continue;
-				}
+				FbxNode* modelNode = FindNode(model);
 
 				// Change parentship (if any)
 				if (model.m_Parent.m_Text != "")
@@ -259,9 +262,24 @@ namespace MSH2FBX
 				}
 
 				ApplyTransform(model, modelNode);
+			}
 
-				// Converting Weights
-				// Execute this AFTER all Bones (MODLs) are converted to FbxNodes!
+			// Converting Weights
+			// Execute this AFTER all Bones (MODLs) are converted to FbxNodes
+			// and their Transforms have been applied respectively
+			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.size(); ++i)
+			{
+				MODL& model = Mesh->m_MeshBlock.m_Models[i];
+				EModelPurpose purpose = model.GetEstimatedPurpose();
+
+				// Do not process unwanted stuff
+				if ((purpose & ModelIgnoreFilter) != 0)
+				{
+					continue;
+				}
+				
+				FbxNode* modelNode = FindNode(model);
+
 				if ((ChunkFilter & EChunkFilter::Weights) == 0 && (purpose & EModelPurpose::Mesh) != 0)
 				{
 					size_t vertexOffset = 0;
@@ -354,11 +372,10 @@ namespace MSH2FBX
 					if (envelope.m_ModelIndices[ei] < Mesh->m_MeshBlock.m_Models.size())
 					{
 						MODL& bone = Mesh->m_MeshBlock.m_Models[envelope.m_ModelIndices[ei]];
+						FbxNode* BoneNode = FindNode(bone);
 
-						auto it = MODLToFbxNode.find(&bone);
-						if (it != MODLToFbxNode.end())
+						if (BoneNode != nullptr)
 						{
-							FbxNode* BoneNode = it->second;
 							FbxCluster* cluster = nullptr;
 
 							auto it2 = BoneToCluster.find(&bone);
@@ -379,7 +396,7 @@ namespace MSH2FBX
 							cluster->AddControlPointIndex((int)(i + vertexOffset), (double)weight.m_WeightValue);
 
 							// mesh node (root) transform matrix
-							FbxAMatrix matrix = meshNode->EvaluateGlobalTransform();
+							FbxAMatrix& matrix = meshNode->EvaluateGlobalTransform();
 							cluster->SetTransformMatrix(matrix);
 
 							// bone node transform matrix

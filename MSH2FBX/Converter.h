@@ -36,6 +36,7 @@ namespace MSH2FBX
 		static map<MODL*, FbxNode*> MODLToFbxNode;
 		static map<CRCChecksum, FbxNode*> CRCToFbxNode;
 
+		static FbxNode* FindNode(MODL& model);
 		static void ApplyTransform(const MODL& model, FbxNode* meshNode);
 		static FbxDouble3 ColorToFBXColor(const Color& color);
 		static void MSHToFBXScene();
