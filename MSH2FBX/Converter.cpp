@@ -189,7 +189,7 @@ namespace MSH2FBX
 						Log("converting " + model.m_Name.m_Text);
 					}
 				}
-				if ((purpose & EModelPurpose::Skeleton) != 0)
+				else if ((purpose & EModelPurpose::Skeleton) != 0)
 				{
 					// Create FBXSkeleton (Bones)
 					if (!MODLToFBXSkeleton(model, modelNode))
@@ -197,6 +197,11 @@ namespace MSH2FBX
 						Log("Failed to convert MSH Model to FBX Skeleton. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
 						continue;
 					}
+				}
+				else if ((purpose & EModelPurpose::Point) != 0)
+				{
+					FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.c_str());
+					modelNode->AddNodeAttribute(mesh);
 				}
 
 				MODLToFbxNode[&model] = modelNode;
