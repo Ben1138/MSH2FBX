@@ -81,6 +81,8 @@ namespace MSH2FBX
 			Log("Still a Fbx File Name present!");
 		}
 
+		MODLToFbxNode.clear();
+		CRCToFbxNode.clear();
 		FbxFileName = fbxFileName;
 
 		// Overall FBX (memory) manager
@@ -100,13 +102,10 @@ namespace MSH2FBX
 			return false;
 		}
 
-		MODLToFbxNode.clear();
-		CRCToFbxNode.clear();
 		Mesh = msh;
-
 		MSHToFBXScene();
-
 		Mesh = nullptr;
+
 		return true;
 	}
 
@@ -697,6 +696,7 @@ namespace MSH2FBX
 
 		EModelPurpose purpose = model.GetEstimatedPurpose();
 		FbxSkeleton* bone = FbxSkeleton::Create(Manager, model.m_Name.m_Text.c_str());
+		bone->Size.Set(1.0f);
 
 		if (purpose == EModelPurpose::Skeleton_Root || purpose == EModelPurpose::Skeleton_BoneRoot)
 		{
