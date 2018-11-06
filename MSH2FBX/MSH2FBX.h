@@ -10,4 +10,7 @@ namespace MSH2FBX
 	void Log(const char* msg);
 	void Log(const string& msg);
 	void LogEntry(LoggerEntry entry);
+
+	string GetFileName(const string& path);
+	string RemoveFileExtension(const string& fileName);
 }
