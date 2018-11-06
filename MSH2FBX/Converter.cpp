@@ -202,7 +202,7 @@ namespace MSH2FBX
 						continue;
 					}
 				}
-				else if ((purpose & EModelPurpose::Point) != 0)
+				else // everything else is just interpreted as a point with an empty mesh
 				{
 					FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.c_str());
 					modelNode->AddNodeAttribute(mesh);
@@ -423,7 +423,6 @@ namespace MSH2FBX
 		Animation& anim = animations.m_AnimationCycle.m_Animations[0];
 
 		FbxAnimLayer* animLayer = FbxAnimLayer::Create(Scene, string(animName + "Layer").c_str());
-		//animLayer->BlendMode.Set(FbxAnimLayer::eBlendAdditive);
 		animStack->AddMember(animLayer);
 
 		// for every bone...
