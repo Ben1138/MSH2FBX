@@ -357,6 +357,9 @@ namespace MSH2FBX
 			return;
 		}
 
+		// mesh node (root) transform matrix
+		FbxAMatrix& matrixMeshNode = meshNode->EvaluateGlobalTransform();
+
 		// for each vertex...
 		for (size_t i = 0; i < weights.m_Weights.size(); ++i)
 		{
@@ -373,6 +376,14 @@ namespace MSH2FBX
 						MODL& bone = Mesh->m_MeshBlock.m_Models[envelope.m_ModelIndices[ei]];
 						FbxNode* BoneNode = FindNode(bone);
 
+						// In MSH the end point represents the Bone, while in FBX the start point represents the bone.
+						// This leads to inconsistent application of weights. 
+						// To prevent that, we have to map the weights onto the Nodes parent
+
+						// Example layout: root_r_upperarm --> bone_r_upperarm --> bone_r_forearm --> eff_r_forearm
+						// In MSH, weights for upperarm and forearm are applied to: bone_r_forearm and eff_r_forearm
+						// But in FBX, we want to apply them to: bone_r_upperarm and bone_r_forearm
+						FbxNode* BoneNode = FindNode(bone)->GetParent();
 						if (BoneNode != nullptr)
 						{
 							FbxCluster* cluster = nullptr;
@@ -385,22 +396,18 @@ namespace MSH2FBX
 							else
 							{
 								cluster = FbxCluster::Create(Scene, string(bone.m_Name.m_Text + "_Cluster").c_str());
+								cluster->SetLinkMode(FbxCluster::eTotalOne);
+								cluster->SetLink(BoneNode);
 								BoneToCluster[&bone] = cluster;
 							}
 
-							cluster->SetLink(BoneNode);
-
-							// TODO: do all 4 weights really add to to 1.0 in MSH? investigation needed!
-							cluster->SetLinkMode(FbxCluster::eTotalOne);
+							// TODO: do all 4 weights really add up to 1.0 in MSH? investigation needed!
 							cluster->AddControlPointIndex((int)(i + vertexOffset), (double)weight.m_WeightValue);
-
-							// mesh node (root) transform matrix
-							FbxAMatrix& matrix = meshNode->EvaluateGlobalTransform();
-							cluster->SetTransformMatrix(matrix);
+							cluster->SetTransformMatrix(matrixMeshNode);
 
 							// bone node transform matrix
-							matrix = BoneNode->EvaluateGlobalTransform();
-							cluster->SetTransformLinkMatrix(matrix);
+							FbxAMatrix& matrixBoneNode = BoneNode->EvaluateGlobalTransform();
+							cluster->SetTransformLinkMatrix(matrixBoneNode);
 						}
 						else
 						{
@@ -706,7 +713,6 @@ namespace MSH2FBX
 		else if (purpose == EModelPurpose::Skeleton_BoneLimb)
 		{
 			bone->SetSkeletonType(FbxSkeleton::eLimbNode);
-			//bone->Size.Set(1.0);
 			Log("Converting '" + model.m_Name.m_Text + "' into Bone (Limb)");
 		}
 		else if (purpose == EModelPurpose::Skeleton_BoneEnd)
