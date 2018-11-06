@@ -685,17 +685,17 @@ namespace MSH2FBX
 		if (purpose == EModelPurpose::Skeleton_Root || purpose == EModelPurpose::Skeleton_BoneRoot)
 		{
 			bone->SetSkeletonType(FbxSkeleton::eRoot);
-			Log("Converting '"+model.m_Name.m_Text+"' into Bone (Root)");
+			//Log("Converting '"+model.m_Name.m_Text+"' into Bone (Root)");
 		}
 		else if (purpose == EModelPurpose::Skeleton_BoneLimb)
 		{
 			bone->SetSkeletonType(FbxSkeleton::eLimbNode);
-			Log("Converting '" + model.m_Name.m_Text + "' into Bone (Limb)");
+			//Log("Converting '" + model.m_Name.m_Text + "' into Bone (Limb)");
 		}
 		else if (purpose == EModelPurpose::Skeleton_BoneEnd)
 		{
 			bone->SetSkeletonType(FbxSkeleton::eLimbNode);
-			Log("Converting '" + model.m_Name.m_Text + "' into Bone (End)");
+			//Log("Converting '" + model.m_Name.m_Text + "' into Bone (End)");
 		}
 		else
 		{
