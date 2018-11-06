@@ -9,29 +9,12 @@ namespace MSH2FBX
 	MSH* Converter::Mesh = nullptr;
 
 	EChunkFilter Converter::ChunkFilter = EChunkFilter::None;
-	EModelPurpose Converter::ModelIgnoreFilter = (EModelPurpose)(
-		EModelPurpose::Mesh_ShadowVolume | 
-		EModelPurpose::Mesh_Lowrez | 
-		EModelPurpose::Mesh_Collision | 
-		EModelPurpose::Mesh_VehicleCollision | 
-		EModelPurpose::Mesh_TerrainCut
-	);
+	EModelPurpose Converter::ModelIgnoreFilter = EModelPurpose::Miscellaneous;
 
+	string Converter::OverrideAnimName = "";
 	map<MODL*, FbxNode*> Converter::MODLToFbxNode;
 	map<CRCChecksum, FbxNode*> Converter::CRCToFbxNode;
 
-
-	string Converter::GetPlainFileName(const string& fileName)
-	{
-		size_t lastindex = fileName.find_last_of(".");
-
-		if (lastindex == string::npos)
-		{
-			return fileName;
-		}
-
-		return fileName.substr(0, lastindex);
-	}
 
 	FbxNode* Converter::FindNode(MODL& model)
 	{
@@ -89,7 +72,7 @@ namespace MSH2FBX
 		Manager = FbxManager::Create();
 
 		// Create FBX Scene
-		Scene = FbxScene::Create(Manager, GetPlainFileName(fbxFileName).c_str());
+		Scene = FbxScene::Create(Manager, RemoveFileExtension(fbxFileName).c_str());
 		Scene->GetGlobalSettings().SetSystemUnit(FbxSystemUnit::m);
 		return true;
 	}
@@ -374,7 +357,6 @@ namespace MSH2FBX
 					if (envelope.m_ModelIndices[ei] < Mesh->m_MeshBlock.m_Models.size())
 					{
 						MODL& bone = Mesh->m_MeshBlock.m_Models[envelope.m_ModelIndices[ei]];
-						FbxNode* BoneNode = FindNode(bone);
 
 						// In MSH the end point represents the Bone, while in FBX the start point represents the bone.
 						// This leads to inconsistent application of weights. 
@@ -429,104 +411,99 @@ namespace MSH2FBX
 
 	void Converter::ANM2ToFBXAnimations(ANM2& animations)
 	{
-		FbxAnimStack* animStack = FbxAnimStack::Create(Scene, "Animation");
-		Animation* anim = nullptr;
-
-		// assuming only one animation per msh, this should be temporary
-		for (size_t i = 0; i < animations.m_AnimationCycle.m_Animations.size(); ++i)
-		{
-			anim = &animations.m_AnimationCycle.m_Animations[i];
-			break;
-		}
-
-		if (!anim)
+		if (animations.m_AnimationCycle.m_Animations.size() == 0)
 		{
 			Log("No Animation Circle found!");
+			return;
 		}
-		else
+
+		// assuming only one animation per msh, this should be temporary
+		string& animName = OverrideAnimName != "" ? OverrideAnimName : animations.m_AnimationCycle.m_Animations[0].m_AnimationName;
+		FbxAnimStack* animStack = FbxAnimStack::Create(Scene, animName.c_str());
+		Animation& anim = animations.m_AnimationCycle.m_Animations[0];
+
+		FbxAnimLayer* animLayer = FbxAnimLayer::Create(Scene, string(animName + "Layer").c_str());
+		//animLayer->BlendMode.Set(FbxAnimLayer::eBlendAdditive);
+		animStack->AddMember(animLayer);
+
+		// for every bone...
+		for (size_t i = 0; i < animations.m_KeyFrames.m_BoneFrames.size(); ++i)
 		{
-			FbxAnimLayer* animLayer = FbxAnimLayer::Create(Scene, "Layer0");
-			animStack->AddMember(animLayer);
+			BoneFrames& bf = animations.m_KeyFrames.m_BoneFrames[i];
+			FbxNode* boneNode = nullptr;
 
-			// for every bone...
-			for (size_t i = 0; i < animations.m_KeyFrames.m_BoneFrames.size(); ++i)
+			// get respective Bone to animate from stored CRC checksum
+			auto it = CRCToFbxNode.find(bf.m_CRCchecksum);
+			if (it != CRCToFbxNode.end())
 			{
-				BoneFrames& bf = animations.m_KeyFrames.m_BoneFrames[i];
-				FbxNode* boneNode = nullptr;
-
-				// get respective Bone to animate from stored CRC checksum
-				auto it = CRCToFbxNode.find(bf.m_CRCchecksum);
-				if (it != CRCToFbxNode.end())
+				if (!it->second)
 				{
-					if (!it->second)
-					{
-						Log("CRC '" + std::to_string(bf.m_CRCchecksum) + "' has been mapped to null pointer!");
-						continue;
-					}
-					boneNode = it->second;
-				}
-				else
-				{
-					Log("Could not find a Bone for CRC: " + std::to_string(bf.m_CRCchecksum));
+					Log("CRC '" + std::to_string(bf.m_CRCchecksum) + "' has been mapped to null pointer!");
 					continue;
 				}
-
-				// Translation
-				FbxAnimCurveNode* tranCurveNode = boneNode->LclTranslation.GetCurveNode(animLayer, true);
-				FbxAnimCurve* tranCurveX = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X, true);
-				FbxAnimCurve* tranCurveY = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y, true);
-				FbxAnimCurve* tranCurveZ = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z, true);
-
-				tranCurveX->KeyModifyBegin();
-				tranCurveY->KeyModifyBegin();
-				tranCurveZ->KeyModifyBegin();
-				for (size_t j = 0; j < bf.m_TranslationFrames.size(); ++j)
-				{
-					TranslationFrame& t = bf.m_TranslationFrames[j];
-
-					FbxTime time;
-					time.SetSecondDouble(t.m_FrameIndex / anim->m_FrameRate);
-					tranCurveX->KeySet(tranCurveX->KeyAdd(time), time, t.m_Translation.m_X, FbxAnimCurveDef::eInterpolationLinear);
-					tranCurveY->KeySet(tranCurveY->KeyAdd(time), time, t.m_Translation.m_Y, FbxAnimCurveDef::eInterpolationLinear);
-					tranCurveZ->KeySet(tranCurveZ->KeyAdd(time), time, t.m_Translation.m_Z, FbxAnimCurveDef::eInterpolationLinear);
-				}
-				tranCurveX->KeyModifyEnd();
-				tranCurveY->KeyModifyEnd();
-				tranCurveZ->KeyModifyEnd();
-
-				// Rotation
-				FbxAnimCurveNode* rotCurveNode = boneNode->LclRotation.GetCurveNode(animLayer, true);
-				FbxAnimCurve* rotCurveX = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X, true);
-				FbxAnimCurve* rotCurveY = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y, true);
-				FbxAnimCurve* rotCurveZ = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z, true);
-
-				rotCurveX->KeyModifyBegin();
-				rotCurveY->KeyModifyBegin();
-				rotCurveZ->KeyModifyBegin();
-				for (size_t j = 0; j < bf.m_RotationFrames.size(); ++j)
-				{
-					RotationFrame& t = bf.m_RotationFrames[j];
-
-					FbxQuaternion quaternion;
-					quaternion.Set
-					(
-						t.m_Rotation.m_X,
-						t.m_Rotation.m_Y,
-						t.m_Rotation.m_Z,
-						t.m_Rotation.m_W
-					);
-					FbxVector4 rot = quaternion.DecomposeSphericalXYZ();
-
-					FbxTime time;
-					time.SetSecondDouble(t.m_FrameIndex / anim->m_FrameRate);
-					rotCurveX->KeySet(rotCurveX->KeyAdd(time), time, (float)rot[0], FbxAnimCurveDef::eInterpolationLinear);
-					rotCurveY->KeySet(rotCurveY->KeyAdd(time), time, (float)rot[1], FbxAnimCurveDef::eInterpolationLinear);
-					rotCurveZ->KeySet(rotCurveZ->KeyAdd(time), time, (float)rot[2], FbxAnimCurveDef::eInterpolationLinear);
-				}
-				rotCurveX->KeyModifyEnd();
-				rotCurveY->KeyModifyEnd();
-				rotCurveZ->KeyModifyEnd();
+				boneNode = it->second;
 			}
+			else
+			{
+				Log("Could not find a Bone for CRC: " + std::to_string(bf.m_CRCchecksum));
+				continue;
+			}
+
+			// Translation
+			FbxAnimCurveNode* tranCurveNode = boneNode->LclTranslation.GetCurveNode(animLayer, true);
+			FbxAnimCurve* tranCurveX = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X, true);
+			FbxAnimCurve* tranCurveY = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y, true);
+			FbxAnimCurve* tranCurveZ = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z, true);
+
+			tranCurveX->KeyModifyBegin();
+			tranCurveY->KeyModifyBegin();
+			tranCurveZ->KeyModifyBegin();
+			for (size_t j = 0; j < bf.m_TranslationFrames.size(); ++j)
+			{
+				TranslationFrame& t = bf.m_TranslationFrames[j];
+
+				FbxTime time;
+				time.SetSecondDouble(t.m_FrameIndex / anim.m_FrameRate);
+				tranCurveX->KeySet(tranCurveX->KeyAdd(time), time, t.m_Translation.m_X, FbxAnimCurveDef::eInterpolationLinear);
+				tranCurveY->KeySet(tranCurveY->KeyAdd(time), time, t.m_Translation.m_Y, FbxAnimCurveDef::eInterpolationLinear);
+				tranCurveZ->KeySet(tranCurveZ->KeyAdd(time), time, t.m_Translation.m_Z, FbxAnimCurveDef::eInterpolationLinear);
+			}
+			tranCurveX->KeyModifyEnd();
+			tranCurveY->KeyModifyEnd();
+			tranCurveZ->KeyModifyEnd();
+
+			// Rotation
+			FbxAnimCurveNode* rotCurveNode = boneNode->LclRotation.GetCurveNode(animLayer, true);
+			FbxAnimCurve* rotCurveX = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X, true);
+			FbxAnimCurve* rotCurveY = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y, true);
+			FbxAnimCurve* rotCurveZ = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z, true);
+
+			rotCurveX->KeyModifyBegin();
+			rotCurveY->KeyModifyBegin();
+			rotCurveZ->KeyModifyBegin();
+			for (size_t j = 0; j < bf.m_RotationFrames.size(); ++j)
+			{
+				RotationFrame& t = bf.m_RotationFrames[j];
+
+				FbxQuaternion quaternion;
+				quaternion.Set
+				(
+					t.m_Rotation.m_X,
+					t.m_Rotation.m_Y,
+					t.m_Rotation.m_Z,
+					t.m_Rotation.m_W
+				);
+				FbxVector4 rot = quaternion.DecomposeSphericalXYZ();
+
+				FbxTime time;
+				time.SetSecondDouble(t.m_FrameIndex / anim.m_FrameRate);
+				rotCurveX->KeySet(rotCurveX->KeyAdd(time), time, (float)rot[0], FbxAnimCurveDef::eInterpolationLinear);
+				rotCurveY->KeySet(rotCurveY->KeyAdd(time), time, (float)rot[1], FbxAnimCurveDef::eInterpolationLinear);
+				rotCurveZ->KeySet(rotCurveZ->KeyAdd(time), time, (float)rot[2], FbxAnimCurveDef::eInterpolationLinear);
+			}
+			rotCurveX->KeyModifyEnd();
+			rotCurveY->KeyModifyEnd();
+			rotCurveZ->KeyModifyEnd();
 		}
 	}
 

@@ -25,8 +25,7 @@ namespace MSH2FBX
 		// In filters, you specify what you DON'T want
 		static EModelPurpose ModelIgnoreFilter;
 		static EChunkFilter ChunkFilter;
-
-		static string GetPlainFileName(const string& fileName);
+		static string OverrideAnimName;
 
 		static bool Start(const string& fbxFileName);
 		static bool AddMSH(MSH* msh);
