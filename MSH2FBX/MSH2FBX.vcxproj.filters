@@ -27,6 +27,9 @@
     <ClInclude Include="MSH2FBX.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CLI11.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
