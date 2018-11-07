@@ -157,6 +157,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CLI11.hpp" />
     <ClInclude Include="Converter.h" />
     <ClInclude Include="MSH2FBX.h" />
     <ClInclude Include="pch.h" />
