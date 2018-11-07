@@ -1,5 +1,33 @@
 # MSH to FBX Converter
 
+## How to use
+Usage: MSH2FBX.exe [OPTIONS]
+
+Options:
+  -h,--help                   Print this help message and exit
+  -f,--files FILE ...         MSH File Names importing all
+  -a,--animation FILE ...     MSH File Names importing Animation Data only
+  -m,--model FILE ...         MSH File Names importing Model Data only
+  -n,--name FILE              Name of the resulting FBX File (optional)
+  -i,--ignore TEXT ...        What to ignore. Options are:
+                                Mesh
+                                Mesh_Collision
+                                Mesh_Lowrez
+                                Mesh_Regular
+                                Mesh_ShadowVolume
+                                Mesh_TerrainCut
+                                Mesh_VehicleCollision
+                                Point
+                                Point_DummyRoot
+                                Point_EmptyTransform
+                                Point_HardPoint
+                                Skeleton
+                                Skeleton_BoneEnd
+                                Skeleton_BoneLimb
+                                Skeleton_BoneRoot
+                                Skeleton_Root
+
+## Pull and Compile
 The folowing process is described for Visual Studio 2017 in x64 release mode. For other build modes, adapt the options respectively.
 <br />
 1. Download [FBX SDK VS2015](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2019-0) (if not already)
