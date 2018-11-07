@@ -6,10 +6,12 @@ Usage: MSH2FBX.exe [OPTIONS]
 
 Options:
   -h,--help                   Print this help message and exit
-  -f,--files FILE ...         MSH File Names importing all
-  -a,--animation FILE ...     MSH File Names importing Animation Data only
-  -m,--model FILE ...         MSH File Names importing Model Data only
-  -n,--name FILE              Name of the resulting FBX File (optional)
+  -f,--files PATH ...         MSH file paths (file or directory, one or more), importing everything
+  -a,--animations PATH ...    MSH file Paths (file or directory, one or more), importing Animation Data only
+  -m,--models PATH ...        MSH file paths (file or directory, one or more), importing Model Data only
+  -n,--name TEXT              Name of the resulting FBX File (optional)
+  -o,--override-anim-name     Will use the MSH file name as Animation name rather than the Animation name stored inside the MSH file
+  -r,--recursive              For all given directories, crawling will be recursive (will include all sub-directories)
   -i,--ignore TEXT ...        What to ignore. Options are:
                                 Mesh
                                 Mesh_Collision
