@@ -13,4 +13,6 @@ namespace MSH2FBX
 
 	string GetFileName(const string& path);
 	string RemoveFileExtension(const string& fileName);
+	vector<string> GetFiles(string Directory, string Extension, bool recursive);
+	vector<string> GetFiles(vector<string> Paths, string Extension, bool recursive);
 }
