@@ -1,6 +1,7 @@
 # MSH to FBX Converter
 
 ## How to use
+```
 Usage: MSH2FBX.exe [OPTIONS]
 
 Options:
@@ -26,7 +27,7 @@ Options:
                                 Skeleton_BoneLimb
                                 Skeleton_BoneRoot
                                 Skeleton_Root
-
+```
 ## Pull and Compile
 The folowing process is described for Visual Studio 2017 in x64 release mode. For other build modes, adapt the options respectively.
 <br />
