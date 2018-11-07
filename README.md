@@ -28,6 +28,9 @@ Options:
                                 Skeleton_BoneRoot
                                 Skeleton_Root
 ```
+Be carefull with the Ignoring Options regarding Points and Bones (Skeleton)! They might brake parentships and result in an useless FBX!<br />
+Meshes should be safe to ignore though.
+
 ## Pull and Compile
 The folowing process is described for Visual Studio 2017 in x64 release mode. For other build modes, adapt the options respectively.
 <br />
