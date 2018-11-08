@@ -492,7 +492,10 @@ namespace MSH2FBX
 					t.m_Rotation.m_Z,
 					t.m_Rotation.m_W
 				);
-				FbxVector4 rot = quaternion.DecomposeSphericalXYZ();
+
+				FbxAMatrix rotMatrix;
+				rotMatrix.SetQOnly(quaternion);
+				FbxVector4 rot = rotMatrix.GetROnly();
 
 				FbxTime time;
 				time.SetSecondDouble(t.m_FrameIndex / anim.m_FrameRate);
