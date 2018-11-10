@@ -418,9 +418,14 @@ namespace MSH2FBX
 		}
 
 		// assuming only one animation per msh, this should be temporary
-		string& animName = OverrideAnimName != "" ? OverrideAnimName : animations.m_AnimationCycle.m_Animations[0].m_AnimationName;
-		FbxAnimStack* animStack = FbxAnimStack::Create(Scene, animName.c_str());
 		Animation& anim = animations.m_AnimationCycle.m_Animations[0];
+		string& animName = OverrideAnimName != "" ? OverrideAnimName : anim.m_AnimationName;
+		FbxAnimStack* animStack = FbxAnimStack::Create(Scene, animName.c_str());
+
+		FbxTime start, end;
+		start.SetSecondDouble(anim.m_FirstFrame / anim.m_FrameRate);
+		end.SetSecondDouble(anim.m_LastFrame / anim.m_FrameRate);
+		animStack->SetLocalTimeSpan(FbxTimeSpan(start, end));
 
 		FbxAnimLayer* animLayer = FbxAnimLayer::Create(Scene, string(animName + "Layer").c_str());
 		animStack->AddMember(animLayer);
@@ -430,7 +435,7 @@ namespace MSH2FBX
 		{
 			BoneFrames& bf = animations.m_KeyFrames.m_BoneFrames[i];
 			FbxNode* boneNode = nullptr;
-
+			
 			// get respective Bone to animate from stored CRC checksum
 			auto it = CRCToFbxNode.find(bf.m_CRCchecksum);
 			if (it != CRCToFbxNode.end())
@@ -449,7 +454,6 @@ namespace MSH2FBX
 			}
 
 			// Translation
-			FbxAnimCurveNode* tranCurveNode = boneNode->LclTranslation.GetCurveNode(animLayer, true);
 			FbxAnimCurve* tranCurveX = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X, true);
 			FbxAnimCurve* tranCurveY = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y, true);
 			FbxAnimCurve* tranCurveZ = boneNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z, true);
@@ -472,7 +476,6 @@ namespace MSH2FBX
 			tranCurveZ->KeyModifyEnd();
 
 			// Rotation
-			FbxAnimCurveNode* rotCurveNode = boneNode->LclRotation.GetCurveNode(animLayer, true);
 			FbxAnimCurve* rotCurveX = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X, true);
 			FbxAnimCurve* rotCurveY = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y, true);
 			FbxAnimCurve* rotCurveZ = boneNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z, true);
