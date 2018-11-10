@@ -3,7 +3,8 @@
 
 namespace MSH2FBX
 {
-	string Converter::FbxFileName = "";
+	fs::path Converter::FbxFilePath;
+
 	FbxScene* Converter::Scene = nullptr;
 	FbxManager* Converter::Manager = nullptr;
 	MSH* Converter::Mesh = nullptr;
@@ -39,7 +40,7 @@ namespace MSH2FBX
 		}
 	}
 
-	bool Converter::Start(const string& fbxFileName)
+	bool Converter::Start(const fs::path& fbxFilePath)
 	{
 		if (Scene != nullptr)
 		{
@@ -59,20 +60,20 @@ namespace MSH2FBX
 			return false;
 		}
 
-		if (FbxFileName != "")
+		if (FbxFilePath != "")
 		{
 			Log("Still a Fbx File Name present!");
 		}
 
 		MODLToFbxNode.clear();
 		CRCToFbxNode.clear();
-		FbxFileName = fbxFileName;
+		FbxFilePath = fbxFilePath;
 
 		// Overall FBX (memory) manager
 		Manager = FbxManager::Create();
 
 		// Create FBX Scene
-		Scene = FbxScene::Create(Manager, RemoveFileExtension(fbxFileName).c_str());
+		Scene = FbxScene::Create(Manager, fbxFilePath.filename().u8string().c_str());
 		Scene->GetGlobalSettings().SetSystemUnit(FbxSystemUnit::m);
 		return true;
 	}
@@ -112,7 +113,7 @@ namespace MSH2FBX
 			return false;
 		}
 
-		if (FbxFileName == "")
+		if (FbxFilePath == "")
 		{
 			Log("No Fbx File Name present!");
 		}
@@ -124,7 +125,7 @@ namespace MSH2FBX
 		FbxIOSettings* settings = FbxIOSettings::Create(Manager, IOSROOT);
 		Manager->SetIOSettings(settings);
 
-		if (exporter->Initialize(FbxFileName.c_str(), -1, Manager->GetIOSettings()))
+		if (exporter->Initialize(FbxFilePath.u8string().c_str(), -1, Manager->GetIOSettings()))
 		{
 			if (!exporter->Export(Scene, false))
 			{
@@ -138,18 +139,35 @@ namespace MSH2FBX
 			success = false;
 		}
 
+		// Free all		
+		exporter->Destroy();
+		Close();
+		return success;
+	}
+
+	void Converter::Close()
+	{
+		if (Scene == nullptr)
+		{
+			Log("Cannot close Scene since its NULL!");
+			return;
+		}
+
+		if (Manager == nullptr)
+		{
+			Log("Cannot close Scene since its NULL!");
+			return;
+		}
+
 		// Free all
 		Scene->Destroy();
 		Scene = nullptr;
-		
-		exporter->Destroy();
 
 		Manager->Destroy();
 		Manager = nullptr;
 
 		Mesh = nullptr;
-		FbxFileName = "";
-		return success;
+		FbxFilePath = "";
 	}
 
 	void Converter::MSHToFBXScene()
