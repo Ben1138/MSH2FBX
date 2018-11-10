@@ -1,6 +1,7 @@
 #pragma once
 #include "pch.h"
 #include "MSH2FBX.h"
+#include <filesystem>
 
 namespace MSH2FBX
 {
@@ -8,6 +9,7 @@ namespace MSH2FBX
 	using namespace LibSWBF2::Types;
 	using LibSWBF2::CRC;
 	using LibSWBF2::CRCChecksum;
+	namespace fs = std::filesystem;
 
 	// Bit Flags
 	enum EChunkFilter
@@ -27,9 +29,10 @@ namespace MSH2FBX
 		static EChunkFilter ChunkFilter;
 		static string OverrideAnimName;
 
-		static bool Start(const string& fbxFileName);
+		static bool Start(const fs::path& fbxFileName);
 		static bool AddMSH(MSH* msh);
 		static bool Save();
+		static void Close();
 
 	private:
 		static map<MODL*, FbxNode*> MODLToFbxNode;
@@ -45,7 +48,7 @@ namespace MSH2FBX
 		static bool MODLToFBXSkeleton(MODL& model, FbxNode* boneNode);
 
 		// Current State
-		static string FbxFileName;
+		static fs::path FbxFilePath;
 		static MSH* Mesh;
 		static FbxScene* Scene;
 		static FbxManager* Manager;
