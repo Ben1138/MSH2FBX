@@ -14,7 +14,7 @@ namespace MSH2FBX
 	void Log(const char* msg);
 	void Log(const string& msg);
 	void LogEntry(LoggerEntry entry);
-	void ShowProgress(const float progress);
+	void ShowProgress(const string& text, const float progress);
 	void FinishProgress();
 
 	bool DescribesDirectory(const fs::path Path);
