@@ -243,7 +243,36 @@ namespace MSH2FBX
 					}
 				}
 
-				ApplyTransform(model, modelNode);
+				// Applying MODL Transform to FbxNode
+				modelNode->LclTranslation.Set
+				(
+					FbxDouble3
+					(
+						model.m_Transition.m_Translation.m_X,
+						model.m_Transition.m_Translation.m_Y,
+						model.m_Transition.m_Translation.m_Z
+					)
+				);
+
+				FbxQuaternion rot;
+				rot.Set
+				(
+					model.m_Transition.m_Rotation.m_X,
+					model.m_Transition.m_Rotation.m_Y,
+					model.m_Transition.m_Rotation.m_Z,
+					model.m_Transition.m_Rotation.m_W
+				);
+				modelNode->LclRotation.Set(rot.DecomposeSphericalXYZ());
+
+				modelNode->LclScaling.Set
+				(
+					FbxDouble3
+					(
+						model.m_Transition.m_Scale.m_X,
+						model.m_Transition.m_Scale.m_Y,
+						model.m_Transition.m_Scale.m_Z
+					)
+				);
 			}
 
 			// Converting Weights
@@ -261,6 +290,7 @@ namespace MSH2FBX
 				}
 				
 				FbxNode* modelNode = FindNode(model);
+				FbxAMatrix& matrixMeshNode = modelNode->EvaluateGlobalTransform();
 
 				if ((ChunkFilter & EChunkFilter::Weights) == 0 && (purpose & EModelPurpose::Mesh) != 0)
 				{
@@ -269,7 +299,7 @@ namespace MSH2FBX
 					for (size_t i = 0; i < model.m_Geometry.m_Segments.size(); ++i)
 					{
 						SEGM& segment = model.m_Geometry.m_Segments[i];
-						WGHTToFBXSkin(segment.m_WeightList, model.m_Geometry.m_Envelope, modelNode, vertexOffset, BoneToCluster);
+						WGHTToFBXSkin(segment.m_WeightList, model.m_Geometry.m_Envelope, matrixMeshNode, vertexOffset, BoneToCluster);
 						vertexOffset += segment.m_VertexList.m_Vertices.size();
 					}
 
@@ -293,55 +323,18 @@ namespace MSH2FBX
 		}
 	}
 
-	void Converter::ApplyTransform(const MODL& model, FbxNode* meshNode)
-	{
-		// Applying MODL Transform to FbxNode
-		meshNode->LclTranslation.Set
-		(
-			FbxDouble3
-			(
-				model.m_Transition.m_Translation.m_X,
-				model.m_Transition.m_Translation.m_Y,
-				model.m_Transition.m_Translation.m_Z
-			)
-		);
-
-		FbxQuaternion rot;
-		rot.Set
-		(
-			model.m_Transition.m_Rotation.m_X,
-			model.m_Transition.m_Rotation.m_Y,
-			model.m_Transition.m_Rotation.m_Z,
-			model.m_Transition.m_Rotation.m_W
-		);
-		meshNode->LclRotation.Set(rot.DecomposeSphericalXYZ());
-
-		meshNode->LclScaling.Set
-		(
-			FbxDouble3
-			(
-				model.m_Transition.m_Scale.m_X,
-				model.m_Transition.m_Scale.m_Y,
-				model.m_Transition.m_Scale.m_Z
-			)
-		);
-	}
-
 	FbxDouble3 Converter::ColorToFBXColor(const Color& color)
 	{
 		return FbxDouble3(color.m_Red, color.m_Green, color.m_Blue);
 	}
 	
-	void Converter::WGHTToFBXSkin(WGHT& weights, const ENVL& envelope, FbxNode* meshNode, const size_t vertexOffset, map<MODL*, FbxCluster*>& BoneToCluster)
+	void Converter::WGHTToFBXSkin(WGHT& weights, const ENVL& envelope, const FbxAMatrix& matrixMeshNode, const size_t vertexOffset, map<MODL*, FbxCluster*>& BoneToCluster)
 	{
 		if (Mesh == nullptr)
 		{
 			Log("Mesh (MSH) is NULL!");
 			return;
 		}
-
-		// mesh node (root) transform matrix
-		FbxAMatrix& matrixMeshNode = meshNode->EvaluateGlobalTransform();
 
 		// for each vertex...
 		for (size_t i = 0; i < weights.m_Weights.size(); ++i)
@@ -351,6 +344,12 @@ namespace MSH2FBX
 			{
 				BoneWeight& weight = weights.m_Weights[i][j];
 				uint32_t& ei = weight.m_EnvelopeIndex;
+
+				// Do not process if the weight is 0.0 anyway
+				if (weight.m_WeightValue == 0.0f)
+				{
+					continue;
+				}
 
 				if (ei < envelope.m_ModelIndices.size())
 				{
@@ -427,7 +426,7 @@ namespace MSH2FBX
 		end.SetSecondDouble(anim.m_LastFrame / anim.m_FrameRate);
 		animStack->SetLocalTimeSpan(FbxTimeSpan(start, end));
 
-		FbxAnimLayer* animLayer = FbxAnimLayer::Create(Scene, string(animName + "Layer").c_str());
+		FbxAnimLayer* animLayer = FbxAnimLayer::Create(Scene, string(animName + "_Layer").c_str());
 		animStack->AddMember(animLayer);
 
 		// for every bone...
@@ -435,7 +434,7 @@ namespace MSH2FBX
 		{
 			BoneFrames& bf = animations.m_KeyFrames.m_BoneFrames[i];
 			FbxNode* boneNode = nullptr;
-			
+
 			// get respective Bone to animate from stored CRC checksum
 			auto it = CRCToFbxNode.find(bf.m_CRCchecksum);
 			if (it != CRCToFbxNode.end())
@@ -687,30 +686,23 @@ namespace MSH2FBX
 		FbxSkeleton* bone = FbxSkeleton::Create(Manager, model.m_Name.m_Text.c_str());
 		bone->Size.Set(1.0f);
 
-		if (purpose == EModelPurpose::Skeleton_Root || purpose == EModelPurpose::Skeleton_BoneRoot)
+		switch (purpose)
 		{
-			bone->SetSkeletonType(FbxSkeleton::eRoot);
-			//Log("Converting '"+model.m_Name.m_Text+"' into Bone (Root)");
-		}
-		else if (purpose == EModelPurpose::Skeleton_BoneLimb)
-		{
-			bone->SetSkeletonType(FbxSkeleton::eLimbNode);
-			//Log("Converting '" + model.m_Name.m_Text + "' into Bone (Limb)");
-		}
-		else if (purpose == EModelPurpose::Skeleton_BoneEnd)
-		{
-			bone->SetSkeletonType(FbxSkeleton::eLimbNode);
-			//Log("Converting '" + model.m_Name.m_Text + "' into Bone (End)");
-		}
-		else
-		{
-			Log("No suitable Bone Type found for '" + model.m_Name.m_Text + "' ! Model Type is: " + std::to_string((int)model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + std::to_string(purpose));
-			bone->Destroy();
-			return false;
+			case EModelPurpose::Skeleton_Root:
+			case EModelPurpose::Skeleton_BoneRoot:
+				bone->SetSkeletonType(FbxSkeleton::eRoot);
+				break;
+			case EModelPurpose::Skeleton_BoneLimb:
+			case EModelPurpose::Skeleton_BoneEnd:
+				bone->SetSkeletonType(FbxSkeleton::eLimbNode);
+				break;
+			default:
+				Log("No suitable Bone Type found for '" + model.m_Name.m_Text + "' ! Model Type is: " + std::to_string((int)model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + std::to_string(purpose));
+				bone->Destroy();
+				return false;
 		}
 
 		boneNode->SetNodeAttribute(bone);
-
 		return true;
 	}
 }
