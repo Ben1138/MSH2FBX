@@ -1,5 +1,7 @@
 # MSH to FBX Converter
 
+This tool converts Meshes, Skeletons and Animations from Pandemics mesh format (MSH2), used in the old Star Wars Battlefront (2004, 2005) series, into Autodesks FBX format which is known by all major Game Engines and 3D Modelling Software.
+
 ## How to use
 ```
 Usage: MSH2FBX.exe [OPTIONS]
