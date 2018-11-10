@@ -13,14 +13,21 @@ namespace MSH2FBX
 	EModelPurpose Converter::ModelIgnoreFilter = EModelPurpose::Miscellaneous;
 
 	string Converter::OverrideAnimName = "";
+	bool Converter::EmptyMeshes = false;
 	map<MODL*, FbxNode*> Converter::MODLToFbxNode;
 	map<CRCChecksum, FbxNode*> Converter::CRCToFbxNode;
 
 
-	FbxNode* Converter::FindNode(MODL& model)
+	FbxNode* Converter::FindNode(MODL* model)
 	{
+		if (model == nullptr)
+		{
+			Log("Given MODL pointer was NULL!");
+			return nullptr;
+		}
+
 		// Get FbxNode of the model (child)
-		auto it = MODLToFbxNode.find(&model);
+		auto it = MODLToFbxNode.find(model);
 		if (it != MODLToFbxNode.end())
 		{
 			if (it->second != nullptr)
@@ -29,15 +36,27 @@ namespace MSH2FBX
 			}
 			else
 			{
-				Log("MODL '" + model.m_Parent.m_Text + "' has been mapped to NULL!");
+				Log("MODL '" + model->m_Parent.m_Text + "' has been mapped to NULL!");
 				return nullptr;
 			}
 		}
-		else
+		return nullptr;
+	}
+
+	FbxNode* Converter::FindNode(const CRCChecksum checksum)
+	{
+		// get respective Bone to animate from stored CRC checksum
+		auto it = CRCToFbxNode.find(checksum);
+		if (it != CRCToFbxNode.end())
 		{
-			Log("No FbxNode has been created for MODL '" + model.m_Parent.m_Text + "' ! This should never happen!");
-			return nullptr;
+			if (!it->second)
+			{
+				Log("CRC '" + std::to_string(checksum) + "' has been mapped to null pointer!");
+				return nullptr;
+			}
+			return it->second;
 		}
+		return nullptr;
 	}
 
 	bool Converter::Start(const fs::path& fbxFilePath)
@@ -178,15 +197,19 @@ namespace MSH2FBX
 		// Converting Models
 		if ((ChunkFilter & EChunkFilter::Models) == 0)
 		{
+			vector<MODL*> processingModels;
 			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.size(); ++i)
 			{
 				MODL& model = Mesh->m_MeshBlock.m_Models[i];
 				EModelPurpose purpose = model.GetEstimatedPurpose();
 
+				// generate crc checksum from name (should match those in msh file)
+				CRCChecksum crc = CRC::CalcLowerCRC(model.m_Name.m_Text.c_str());
+
 				// Do not process unwanted stuff
-				if ((purpose & ModelIgnoreFilter) != 0)
+				// Do not process the same Bone more than once
+				if ((purpose & ModelIgnoreFilter) != 0 || ((purpose & EModelPurpose::Skeleton) != 0 && FindNode(crc) != nullptr))
 				{
-					Log("Skipping Model '" + model.m_Name.m_Text + "' according to filter");
 					continue;
 				}
 
@@ -194,21 +217,20 @@ namespace MSH2FBX
 				FbxNode* modelNode = FbxNode::Create(Manager, model.m_Name.m_Text.c_str());
 				rootNode->AddChild(modelNode);
 
-				// generate crc checksum from name (should match those in msh file)
-				CRCChecksum crc = CRC::CalcLowerCRC(model.m_Name.m_Text.c_str());
-				CRCToFbxNode[crc] = modelNode;
-
 				if ((purpose & EModelPurpose::Mesh) != 0)
 				{
+					if (EmptyMeshes)
+					{
+						FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.c_str());
+						modelNode->AddNodeAttribute(mesh);
+						continue;
+					}
+
 					// Create and attach Mesh
 					if (!MODLToFBXMesh(model, Mesh->m_MeshBlock.m_MaterialList, modelNode))
 					{
 						Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
 						continue;
-					}
-					else
-					{
-						Log("converting " + model.m_Name.m_Text);
 					}
 				}
 				else if ((purpose & EModelPurpose::Skeleton) != 0)
@@ -226,29 +248,30 @@ namespace MSH2FBX
 					modelNode->AddNodeAttribute(mesh);
 				}
 
+				processingModels.emplace_back(&model); 
+				CRCToFbxNode[crc] = modelNode;
 				MODLToFbxNode[&model] = modelNode;
 			}
 
-			// Applying parentship and weights
+			// Applying parentships
 			// Maybe doing something more efficient in the future?
-			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.size(); ++i)
+			for (size_t i = 0; i < processingModels.size(); ++i)
 			{
-				MODL& model = Mesh->m_MeshBlock.m_Models[i];
-				EModelPurpose purpose = model.GetEstimatedPurpose();
+				MODL* model = processingModels[i];
+				EModelPurpose purpose = model->GetEstimatedPurpose();
 
-				// Do not process unwanted stuff
-				if ((purpose & ModelIgnoreFilter) != 0)
+				FbxNode* modelNode = FindNode(model);
+				if (modelNode == nullptr)
 				{
+					Log("No FbxNode has been created for MODL '" + model->m_Parent.m_Text + "' ! This should never happen!");
 					continue;
 				}
 
-				FbxNode* modelNode = FindNode(model);
-
 				// Change parentship (if any)
-				if (model.m_Parent.m_Text != "")
+				if (model->m_Parent.m_Text != "")
 				{
 					// Get FBXNode of Parent
-					FbxNode* parentNode = rootNode->FindChild(model.m_Parent.m_Text.c_str());
+					FbxNode* parentNode = rootNode->FindChild(model->m_Parent.m_Text.c_str());
 
 					if (parentNode != nullptr)
 					{
@@ -257,7 +280,7 @@ namespace MSH2FBX
 					}
 					else
 					{
-						Log("Parent Node '" + model.m_Parent.m_Text + "' not found!");
+						Log("Parent Node '" + model->m_Parent.m_Text + "' not found!");
 					}
 				}
 
@@ -266,19 +289,19 @@ namespace MSH2FBX
 				(
 					FbxDouble3
 					(
-						model.m_Transition.m_Translation.m_X,
-						model.m_Transition.m_Translation.m_Y,
-						model.m_Transition.m_Translation.m_Z
+						model->m_Transition.m_Translation.m_X,
+						model->m_Transition.m_Translation.m_Y,
+						model->m_Transition.m_Translation.m_Z
 					)
 				);
 
 				FbxQuaternion rot;
 				rot.Set
 				(
-					model.m_Transition.m_Rotation.m_X,
-					model.m_Transition.m_Rotation.m_Y,
-					model.m_Transition.m_Rotation.m_Z,
-					model.m_Transition.m_Rotation.m_W
+					model->m_Transition.m_Rotation.m_X,
+					model->m_Transition.m_Rotation.m_Y,
+					model->m_Transition.m_Rotation.m_Z,
+					model->m_Transition.m_Rotation.m_W
 				);
 				modelNode->LclRotation.Set(rot.DecomposeSphericalXYZ());
 
@@ -286,9 +309,9 @@ namespace MSH2FBX
 				(
 					FbxDouble3
 					(
-						model.m_Transition.m_Scale.m_X,
-						model.m_Transition.m_Scale.m_Y,
-						model.m_Transition.m_Scale.m_Z
+						model->m_Transition.m_Scale.m_X,
+						model->m_Transition.m_Scale.m_Y,
+						model->m_Transition.m_Scale.m_Z
 					)
 				);
 			}
@@ -296,32 +319,33 @@ namespace MSH2FBX
 			// Converting Weights
 			// Execute this AFTER all Bones (MODLs) are converted to FbxNodes
 			// and their Transforms have been applied respectively
-			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.size(); ++i)
+			for (size_t i = 0; i < processingModels.size(); ++i)
 			{
-				MODL& model = Mesh->m_MeshBlock.m_Models[i];
-				EModelPurpose purpose = model.GetEstimatedPurpose();
-
-				// Do not process unwanted stuff
-				if ((purpose & ModelIgnoreFilter) != 0)
-				{
-					continue;
-				}
+				MODL* model = processingModels[i];
+				EModelPurpose purpose = model->GetEstimatedPurpose();
 				
 				FbxNode* modelNode = FindNode(model);
+				if (modelNode == nullptr)
+				{
+					Log("No FbxNode has been created for MODL '" + model->m_Parent.m_Text + "' ! This should never happen!");
+					continue;
+				}
+
 				FbxAMatrix& matrixMeshNode = modelNode->EvaluateGlobalTransform();
 
 				if ((ChunkFilter & EChunkFilter::Weights) == 0 && (purpose & EModelPurpose::Mesh) != 0)
 				{
 					size_t vertexOffset = 0;
 
-					for (size_t i = 0; i < model.m_Geometry.m_Segments.size(); ++i)
+					// Go through all Mesh Segments, grabbing Weight data
+					for (size_t i = 0; i < model->m_Geometry.m_Segments.size(); ++i)
 					{
-						SEGM& segment = model.m_Geometry.m_Segments[i];
-						WGHTToFBXSkin(segment.m_WeightList, model.m_Geometry.m_Envelope, matrixMeshNode, vertexOffset, BoneToCluster);
+						SEGM& segment = model->m_Geometry.m_Segments[i];
+						WGHTToFBXSkin(segment.m_WeightList, model->m_Geometry.m_Envelope, matrixMeshNode, vertexOffset, BoneToCluster);
 						vertexOffset += segment.m_VertexList.m_Vertices.size();
 					}
 
-					FbxSkin* skin = FbxSkin::Create(Scene, string(model.m_Name.m_Text + "_Skin").c_str());
+					FbxSkin* skin = FbxSkin::Create(Scene, string(model->m_Name.m_Text + "_Skin").c_str());
 
 					for (auto it = BoneToCluster.begin(); it != BoneToCluster.end(); it++)
 					{
@@ -373,7 +397,20 @@ namespace MSH2FBX
 				{
 					if (envelope.m_ModelIndices[ei] < Mesh->m_MeshBlock.m_Models.size())
 					{
+						// Here, we're looking at the Bone  of the Mesh file, not the Basepose file!
+						// Since the Bones from the Mesh File wont have been processed if a Basepose file
+						// has been specified, finding the corresponding FbxNode via MODL pointer
+						// won't yield any results. So we have to find the Bone via CRC
 						MODL& bone = Mesh->m_MeshBlock.m_Models[envelope.m_ModelIndices[ei]];
+
+						CRCChecksum crc = CRC::CalcLowerCRC(bone.m_Name.m_Text.c_str());
+						FbxNode* BoneNode = FindNode(crc);
+
+						if (BoneNode == nullptr)
+						{
+							Log("Could not find a Bone '"+bone.m_Name.m_Text+"' for CRC: " + std::to_string(crc));
+							continue;
+						}
 
 						// In MSH the end point represents the Bone, while in FBX the start point represents the bone.
 						// This leads to inconsistent application of weights. 
@@ -382,7 +419,8 @@ namespace MSH2FBX
 						// Example layout: root_r_upperarm --> bone_r_upperarm --> bone_r_forearm --> eff_r_forearm
 						// In MSH, weights for upperarm and forearm are applied to: bone_r_forearm and eff_r_forearm
 						// But in FBX, we want to apply them to: bone_r_upperarm and bone_r_forearm
-						FbxNode* BoneNode = FindNode(bone)->GetParent();
+						BoneNode = BoneNode->GetParent();
+
 						if (BoneNode != nullptr)
 						{
 							FbxCluster* cluster = nullptr;
@@ -451,20 +489,9 @@ namespace MSH2FBX
 		for (size_t i = 0; i < animations.m_KeyFrames.m_BoneFrames.size(); ++i)
 		{
 			BoneFrames& bf = animations.m_KeyFrames.m_BoneFrames[i];
-			FbxNode* boneNode = nullptr;
+			FbxNode* boneNode = FindNode(bf.m_CRCchecksum);
 
-			// get respective Bone to animate from stored CRC checksum
-			auto it = CRCToFbxNode.find(bf.m_CRCchecksum);
-			if (it != CRCToFbxNode.end())
-			{
-				if (!it->second)
-				{
-					Log("CRC '" + std::to_string(bf.m_CRCchecksum) + "' has been mapped to null pointer!");
-					continue;
-				}
-				boneNode = it->second;
-			}
-			else
+			if (boneNode == nullptr)
 			{
 				Log("Could not find a Bone for CRC: " + std::to_string(bf.m_CRCchecksum));
 				continue;

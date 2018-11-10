@@ -28,6 +28,7 @@ namespace MSH2FBX
 		static EModelPurpose ModelIgnoreFilter;
 		static EChunkFilter ChunkFilter;
 		static string OverrideAnimName;
+		static bool EmptyMeshes;
 
 		static bool Start(const fs::path& fbxFileName);
 		static bool AddMSH(MSH* msh);
@@ -38,7 +39,8 @@ namespace MSH2FBX
 		static map<MODL*, FbxNode*> MODLToFbxNode;
 		static map<CRCChecksum, FbxNode*> CRCToFbxNode;
 
-		static FbxNode* FindNode(MODL& model);
+		static FbxNode* FindNode(MODL* model);
+		static FbxNode* FindNode(const CRCChecksum checksum);
 		static FbxDouble3 ColorToFBXColor(const Color& color);
 		static void MSHToFBXScene();
 		static void ANM2ToFBXAnimations(ANM2& animations);
