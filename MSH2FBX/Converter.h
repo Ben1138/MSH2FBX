@@ -36,16 +36,15 @@ namespace MSH2FBX
 		static map<CRCChecksum, FbxNode*> CRCToFbxNode;
 
 		static FbxNode* FindNode(MODL& model);
-		static void ApplyTransform(const MODL& model, FbxNode* meshNode);
 		static FbxDouble3 ColorToFBXColor(const Color& color);
 		static void MSHToFBXScene();
 		static void ANM2ToFBXAnimations(ANM2& animations);
-		static void WGHTToFBXSkin(WGHT& weights, const ENVL& envelope, FbxNode* meshNode, const size_t vertexOffset, map<MODL*, FbxCluster*>& BoneToCluster);
+		static void WGHTToFBXSkin(WGHT& weights, const ENVL& envelope, const FbxAMatrix& matrixMeshNode, const size_t vertexOffset, map<MODL*, FbxCluster*>& BoneToCluster);
 		static bool MATDToFBXMaterial(const MATD& material, FbxNode* meshNode, int& matIndex);
 		static bool MODLToFBXMesh(MODL& model, MATL& materials, FbxNode* meshNode);
 		static bool MODLToFBXSkeleton(MODL& model, FbxNode* boneNode);
 
-		// Current
+		// Current State
 		static string FbxFileName;
 		static MSH* Mesh;
 		static FbxScene* Scene;
