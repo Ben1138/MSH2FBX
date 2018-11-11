@@ -4,16 +4,34 @@ This tool converts Meshes, Skeletons and Animations from Pandemics mesh format (
 
 ## How to use
 ```
-Usage: MSH2FBX.exe [OPTIONS]
+--------------------------------------------------------------
+-------------------- MSH to FBX Converter --------------------
+--------------------------------------------------------------
+Web: https://github.com/Ben1138/MSH2FBX
+
+This tool can convert multiple MSHs at once! If no destination
+is specified (via the -d option), all resulting FBX files will
+be placed in the exact same location where the respective MSH
+files lie.
+If some directory is specified, the resulting FBX files will end
+up in that specific directory (directory must exist!)
+If a specific FBX File Name is given, all MSHs will be merged
+into that single FBX File!
+
+Note that all resulting FBX Files will be overwritten
+without question!
+
+Usage: C:\Users\Marten\Documents\GIT\MSH2FBX\x64\Debug\MSH2FBX.exe [OPTIONS]
 
 Options:
   -h,--help                   Print this help message and exit
-  -f,--files PATH ...         MSH file paths (file or directory, one or more), importing everything
-  -a,--animations PATH ...    MSH file Paths (file or directory, one or more), importing Animation Data only
-  -m,--models PATH ...        MSH file paths (file or directory, one or more), importing Model Data only
-  -n,--name TEXT              Name of the resulting FBX File (optional)
-  -o,--override-anim-name     Will use the MSH file name as Animation name rather than the Animation name stored inside the MSH file
-  -r,--recursive              For all given directories, crawling will be recursive (will include all sub-directories)
+  -f,--files PATH ...         MSH file paths (file or directory, one or more), importing everything.
+  -a,--animations PATH ...    MSH file Paths (file or directory, one or more), importing Animation Data only!
+  -m,--models PATH ...        MSH file paths (file or directory, one or more), importing Model Data only!
+  -d,--destination TEXT       Folder destination or specific FBX File Name (see details above!)
+  -b,--basepose FILE          Specific MSH Basepose to use for Bone import.
+  -o,--override-anim-name     Will use the MSH file name as Animation name, rather than the Animation name stored inside the MSH file.
+  -r,--recursive              For all given directories, crawling will be recursive (will include all sub-directories).
   -i,--ignore TEXT ...        What to ignore. Options are:
                                 Mesh
                                 Mesh_Collision
