@@ -28,7 +28,7 @@ namespace MSH2FBX
 		static EModelPurpose ModelIgnoreFilter;
 		static EChunkFilter ChunkFilter;
 		static string OverrideAnimName;
-		static bool EmptyMeshes;
+		static MSH* Basepose;
 
 		static bool Start(const fs::path& fbxFileName);
 		static bool AddMSH(MSH* msh);
@@ -42,6 +42,9 @@ namespace MSH2FBX
 		static FbxNode* FindNode(MODL* model);
 		static FbxNode* FindNode(const CRCChecksum checksum);
 		static FbxDouble3 ColorToFBXColor(const Color& color);
+		static FbxDouble4 QuaternionToEuler(const Vector4& Quaternion);
+		static void ApplyTransform(FbxNode* modelNode, const Vector3& Translation, const Vector4& Rotation);
+		static void ApplyTransform(FbxNode* modelNode, const Vector3& Translation, const Vector4& Rotation, const Vector3& Scale);
 		static void MSHToFBXScene();
 		static void ANM2ToFBXAnimations(ANM2& animations);
 		static void WGHTToFBXSkin(WGHT& weights, const ENVL& envelope, const FbxAMatrix& matrixMeshNode, const size_t vertexOffset, map<MODL*, FbxCluster*>& BoneToCluster);
