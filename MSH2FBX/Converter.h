@@ -29,6 +29,7 @@ namespace MSH2FBX
 		static EChunkFilter ChunkFilter;
 		static string OverrideAnimName;
 		static MSH* Basepose;
+		static bool EmptyMeshes;
 
 		static bool Start(const fs::path& fbxFileName);
 		static bool AddMSH(MSH* msh);
