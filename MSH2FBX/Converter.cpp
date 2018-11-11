@@ -13,7 +13,7 @@ namespace MSH2FBX
 	EModelPurpose Converter::ModelIgnoreFilter = EModelPurpose::Miscellaneous;
 
 	string Converter::OverrideAnimName = "";
-	bool Converter::EmptyMeshes = false;
+	MSH* Converter::Basepose = nullptr;
 	map<MODL*, FbxNode*> Converter::MODLToFbxNode;
 	map<CRCChecksum, FbxNode*> Converter::CRCToFbxNode;
 
@@ -197,7 +197,11 @@ namespace MSH2FBX
 		// Converting Models
 		if ((ChunkFilter & EChunkFilter::Models) == 0)
 		{
+			// Since we have to loop through all MSH models multiple times (duh!)
+			// lets just remember all processed models (according to filter)
+			// so we don't have to re-filter in the other loops again
 			vector<MODL*> processingModels;
+
 			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.size(); ++i)
 			{
 				MODL& model = Mesh->m_MeshBlock.m_Models[i];
@@ -219,13 +223,6 @@ namespace MSH2FBX
 
 				if ((purpose & EModelPurpose::Mesh) != 0)
 				{
-					if (EmptyMeshes)
-					{
-						FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.c_str());
-						modelNode->AddNodeAttribute(mesh);
-						continue;
-					}
-
 					// Create and attach Mesh
 					if (!MODLToFBXMesh(model, Mesh->m_MeshBlock.m_MaterialList, modelNode))
 					{
@@ -241,6 +238,8 @@ namespace MSH2FBX
 						Log("Failed to convert MSH Model to FBX Skeleton. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
 						continue;
 					}
+
+
 				}
 				else // everything else is just interpreted as a point with an empty mesh
 				{
@@ -253,7 +252,7 @@ namespace MSH2FBX
 				MODLToFbxNode[&model] = modelNode;
 			}
 
-			// Applying parentships
+			// Applying Transforms and Parentships
 			// Maybe doing something more efficient in the future?
 			for (size_t i = 0; i < processingModels.size(); ++i)
 			{
@@ -285,40 +284,65 @@ namespace MSH2FBX
 				}
 
 				// Applying MODL Transform to FbxNode
-				modelNode->LclTranslation.Set
-				(
-					FbxDouble3
-					(
-						model->m_Transition.m_Translation.m_X,
-						model->m_Transition.m_Translation.m_Y,
-						model->m_Transition.m_Translation.m_Z
-					)
-				);
-
-				FbxQuaternion rot;
-				rot.Set
-				(
-					model->m_Transition.m_Rotation.m_X,
-					model->m_Transition.m_Rotation.m_Y,
-					model->m_Transition.m_Rotation.m_Z,
-					model->m_Transition.m_Rotation.m_W
-				);
-				modelNode->LclRotation.Set(rot.DecomposeSphericalXYZ());
-
-				modelNode->LclScaling.Set
-				(
-					FbxDouble3
-					(
-						model->m_Transition.m_Scale.m_X,
-						model->m_Transition.m_Scale.m_Y,
-						model->m_Transition.m_Scale.m_Z
-					)
+				ApplyTransform(
+					modelNode, 
+					model->m_Transition.m_Translation, 
+					model->m_Transition.m_Rotation,
+					model->m_Transition.m_Scale
 				);
 			}
 
-			// Converting Weights
+			// Apply Basepose to all Bones BEFORE applying Mesh Weights!
+			if (Basepose != nullptr)
+			{
+				vector<BoneFrames>& BoneFrames = Basepose->m_Animations.m_KeyFrames.m_BoneFrames;
+				if (BoneFrames.size() > 0)
+				{
+					// for every bone...
+					for (size_t i = 0; i < BoneFrames.size(); ++i)
+					{
+						FbxNode* boneNode = FindNode(BoneFrames[i].m_CRCchecksum);
+
+						if (boneNode == nullptr)
+						{
+							Log("Could not find a Bone for CRC: " + std::to_string(BoneFrames[i].m_CRCchecksum));
+							continue;
+						}
+
+						if (BoneFrames[i].m_TranslationFrames.size() == 0)
+						{
+							Log("Given Basepose file does not contain any Bone Translation Data!");
+						}
+						else if (BoneFrames[i].m_RotationFrames.size() == 0)
+						{
+							Log("Given Basepose file does not contain any Bone Rotation Data!");
+						}
+						else
+						{
+							// A Basepose file contains an Animation with only one Frame
+							// defining the Basepose. So ignore all possible other frames
+							Vector3& boneTranslation = BoneFrames[i].m_TranslationFrames[0].m_Translation;
+							Vector4& boneRotation = BoneFrames[i].m_RotationFrames[0].m_Rotation;
+							FbxVector4 rot = QuaternionToEuler(boneRotation);
+
+							ApplyTransform(
+								boneNode,
+								boneTranslation,
+								boneRotation
+							);
+						}
+					}
+				}
+				else
+				{
+					Log("Given Basepose file does not contain any Frame Data!");
+				}
+			}
+
+
+			// Applying Weights to all Meshes
 			// Execute this AFTER all Bones (MODLs) are converted to FbxNodes
-			// and their Transforms have been applied respectively
+			// and their Transforms have been applied respectively!
 			for (size_t i = 0; i < processingModels.size(); ++i)
 			{
 				MODL* model = processingModels[i];
@@ -331,10 +355,9 @@ namespace MSH2FBX
 					continue;
 				}
 
-				FbxAMatrix& matrixMeshNode = modelNode->EvaluateGlobalTransform();
-
 				if ((ChunkFilter & EChunkFilter::Weights) == 0 && (purpose & EModelPurpose::Mesh) != 0)
 				{
+					FbxAMatrix& matrixMeshNode = modelNode->EvaluateGlobalTransform();
 					size_t vertexOffset = 0;
 
 					// Go through all Mesh Segments, grabbing Weight data
@@ -368,6 +391,50 @@ namespace MSH2FBX
 	FbxDouble3 Converter::ColorToFBXColor(const Color& color)
 	{
 		return FbxDouble3(color.m_Red, color.m_Green, color.m_Blue);
+	}
+
+	FbxDouble4 Converter::QuaternionToEuler(const Vector4& Quaternion)
+	{
+		FbxQuaternion quaternion;
+		quaternion.Set
+		(
+			Quaternion.m_X,
+			Quaternion.m_Y,
+			Quaternion.m_Z,
+			Quaternion.m_W
+		);
+
+		FbxAMatrix rotMatrix;
+		rotMatrix.SetQOnly(quaternion);
+		return rotMatrix.GetROnly();
+	}
+
+	void Converter::ApplyTransform(FbxNode* modelNode, const Vector3& Translation, const Vector4& Rotation)
+	{
+		modelNode->LclTranslation.Set
+		(
+			FbxDouble3
+			(
+				Translation.m_X,
+				Translation.m_Y,
+				Translation.m_Z
+			)
+		);
+		modelNode->LclRotation.Set(QuaternionToEuler(Rotation));
+	}
+
+	void Converter::ApplyTransform(FbxNode* modelNode, const Vector3& Translation, const Vector4& Rotation, const Vector3& Scale)
+	{
+		ApplyTransform(modelNode, Translation, Rotation);
+		modelNode->LclScaling.Set
+		(
+			FbxDouble3
+			(
+				Scale.m_X,
+				Scale.m_Y,
+				Scale.m_Z
+			)
+		);
 	}
 	
 	void Converter::WGHTToFBXSkin(WGHT& weights, const ENVL& envelope, const FbxAMatrix& matrixMeshNode, const size_t vertexOffset, map<MODL*, FbxCluster*>& BoneToCluster)
@@ -507,13 +574,13 @@ namespace MSH2FBX
 			tranCurveZ->KeyModifyBegin();
 			for (size_t j = 0; j < bf.m_TranslationFrames.size(); ++j)
 			{
-				TranslationFrame& t = bf.m_TranslationFrames[j];
+				TranslationFrame& tranFrame = bf.m_TranslationFrames[j];
 
 				FbxTime time;
-				time.SetSecondDouble(t.m_FrameIndex / anim.m_FrameRate);
-				tranCurveX->KeySet(tranCurveX->KeyAdd(time), time, t.m_Translation.m_X, FbxAnimCurveDef::eInterpolationLinear);
-				tranCurveY->KeySet(tranCurveY->KeyAdd(time), time, t.m_Translation.m_Y, FbxAnimCurveDef::eInterpolationLinear);
-				tranCurveZ->KeySet(tranCurveZ->KeyAdd(time), time, t.m_Translation.m_Z, FbxAnimCurveDef::eInterpolationLinear);
+				time.SetSecondDouble(tranFrame.m_FrameIndex / anim.m_FrameRate);
+				tranCurveX->KeySet(tranCurveX->KeyAdd(time), time, tranFrame.m_Translation.m_X, FbxAnimCurveDef::eInterpolationLinear);
+				tranCurveY->KeySet(tranCurveY->KeyAdd(time), time, tranFrame.m_Translation.m_Y, FbxAnimCurveDef::eInterpolationLinear);
+				tranCurveZ->KeySet(tranCurveZ->KeyAdd(time), time, tranFrame.m_Translation.m_Z, FbxAnimCurveDef::eInterpolationLinear);
 			}
 			tranCurveX->KeyModifyEnd();
 			tranCurveY->KeyModifyEnd();
@@ -529,23 +596,11 @@ namespace MSH2FBX
 			rotCurveZ->KeyModifyBegin();
 			for (size_t j = 0; j < bf.m_RotationFrames.size(); ++j)
 			{
-				RotationFrame& t = bf.m_RotationFrames[j];
-
-				FbxQuaternion quaternion;
-				quaternion.Set
-				(
-					t.m_Rotation.m_X,
-					t.m_Rotation.m_Y,
-					t.m_Rotation.m_Z,
-					t.m_Rotation.m_W
-				);
-
-				FbxAMatrix rotMatrix;
-				rotMatrix.SetQOnly(quaternion);
-				FbxVector4 rot = rotMatrix.GetROnly();
+				RotationFrame& rotFrame = bf.m_RotationFrames[j];
+				FbxVector4 rot = QuaternionToEuler(rotFrame.m_Rotation);
 
 				FbxTime time;
-				time.SetSecondDouble(t.m_FrameIndex / anim.m_FrameRate);
+				time.SetSecondDouble(rotFrame.m_FrameIndex / anim.m_FrameRate);
 				rotCurveX->KeySet(rotCurveX->KeyAdd(time), time, (float)rot[0], FbxAnimCurveDef::eInterpolationLinear);
 				rotCurveY->KeySet(rotCurveY->KeyAdd(time), time, (float)rot[1], FbxAnimCurveDef::eInterpolationLinear);
 				rotCurveZ->KeySet(rotCurveZ->KeyAdd(time), time, (float)rot[2], FbxAnimCurveDef::eInterpolationLinear);
