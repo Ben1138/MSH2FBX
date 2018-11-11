@@ -17,6 +17,7 @@ namespace MSH2FBX
 	map<MODL*, FbxNode*> Converter::MODLToFbxNode;
 	map<CRCChecksum, FbxNode*> Converter::CRCToFbxNode;
 	FbxPose* Converter::Bindpose = nullptr;
+	bool Converter::EmptyMeshes = false;
 
 
 	FbxNode* Converter::FindNode(MODL* model)
@@ -224,8 +225,14 @@ namespace MSH2FBX
 
 				if ((purpose & EModelPurpose::Mesh) != 0)
 				{
+					if (EmptyMeshes)
+					{
+						FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.c_str());
+						modelNode->AddNodeAttribute(mesh);
+					}
+
 					// Create and attach Mesh
-					if (!MODLToFBXMesh(model, Mesh->m_MeshBlock.m_MaterialList, modelNode))
+					else if (!MODLToFBXMesh(model, Mesh->m_MeshBlock.m_MaterialList, modelNode))
 					{
 						Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
 						continue;
