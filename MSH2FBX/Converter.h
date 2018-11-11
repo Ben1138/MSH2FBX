@@ -57,5 +57,6 @@ namespace MSH2FBX
 		static MSH* Mesh;
 		static FbxScene* Scene;
 		static FbxManager* Manager;
+		static FbxPose* Bindpose;
 	};
 }

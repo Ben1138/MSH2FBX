@@ -16,6 +16,7 @@ namespace MSH2FBX
 	MSH* Converter::Basepose = nullptr;
 	map<MODL*, FbxNode*> Converter::MODLToFbxNode;
 	map<CRCChecksum, FbxNode*> Converter::CRCToFbxNode;
+	FbxPose* Converter::Bindpose = nullptr;
 
 
 	FbxNode* Converter::FindNode(MODL* model)
@@ -330,6 +331,15 @@ namespace MSH2FBX
 								boneTranslation,
 								boneRotation
 							);
+
+							// Ensure FBX Bindepose exists
+							if (Bindpose == nullptr)
+							{
+								Bindpose = FbxPose::Create(Scene, "Bindpose");
+								Bindpose->SetIsBindPose(true);
+								Scene->AddPose(Bindpose);
+							}
+							Bindpose->Add(boneNode, boneNode->EvaluateGlobalTransform(), false, false);
 						}
 					}
 				}
