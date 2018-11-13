@@ -144,19 +144,24 @@ namespace MSH2FBX
 		// Export Scene to FBX
 		FbxExporter* exporter = FbxExporter::Create(Manager, "");
 		FbxIOSettings* settings = FbxIOSettings::Create(Manager, IOSROOT);
+		settings->SetBoolProp(EXP_FBX_MATERIAL, true);
+		settings->SetBoolProp(EXP_FBX_TEXTURE, true);
+		settings->SetBoolProp(EXP_FBX_ANIMATION, true);
+		settings->SetBoolProp(EXP_FBX_GLOBAL_SETTINGS, true);
 		Manager->SetIOSettings(settings);
 
 		if (exporter->Initialize(FbxFilePath.u8string().c_str(), -1, Manager->GetIOSettings()))
 		{
+			exporter->SetFileExportVersion(FBX_2011_00_COMPATIBLE);
 			if (!exporter->Export(Scene, false))
 			{
-				Log("Exporting failed!");
+				Log("Exporting failed!\n" + string(exporter->GetStatus().GetErrorString()));
 				success = false;
 			}
 		}
 		else
 		{
-			Log("Initializing export failed!");
+			Log("Initializing export failed!\n" + string(exporter->GetStatus().GetErrorString()));
 			success = false;
 		}
 
@@ -644,9 +649,10 @@ namespace MSH2FBX
 
 		matIndex = meshNode->GetMaterialIndex(material.m_Name.m_Text.c_str());
 
+		// Create Material if non existent
 		if (matIndex < 0)
 		{
-			FbxSurfacePhong* fbxMaterial = FbxSurfacePhong::Create(Manager, material.m_Name.m_Text.c_str());
+			FbxSurfacePhong* fbxMaterial = FbxSurfacePhong::Create(Scene, material.m_Name.m_Text.c_str());
 			fbxMaterial->Diffuse.Set(ColorToFBXColor(material.m_Data.m_Diffuse));
 			fbxMaterial->Ambient.Set(ColorToFBXColor(material.m_Data.m_Ambient));
 			fbxMaterial->Specular.Set(ColorToFBXColor(material.m_Data.m_Specular));
