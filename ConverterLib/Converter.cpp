@@ -1,24 +1,31 @@
-#include "pch.h"
+#include "stdafx.h"
 #include "Converter.h"
 
-namespace MSH2FBX
+namespace Converter
 {
-	fs::path Converter::FbxFilePath;
+	Converter::Converter(const fs::path& fbxFileName)
+	{
+		Start(fbxFileName);
 
-	FbxScene* Converter::Scene = nullptr;
-	FbxManager* Converter::Manager = nullptr;
-	MSH* Converter::Mesh = nullptr;
+		// pipe LibSWBF2 logs to our log
+		Logger::SetLogCallback([this] (LoggerEntry entry) 
+		{
+			Log(entry.ToString());
+		});
+	}
 
-	EChunkFilter Converter::ChunkFilter = EChunkFilter::None;
-	EModelPurpose Converter::ModelIgnoreFilter = EModelPurpose::Miscellaneous;
+	Converter::~Converter()
+	{
+		Close();
+	}
 
-	string Converter::OverrideAnimName = "";
-	MSH* Converter::Basepose = nullptr;
-	map<MODL*, FbxNode*> Converter::MODLToFbxNode;
-	map<CRCChecksum, FbxNode*> Converter::CRCToFbxNode;
-	FbxPose* Converter::Bindpose = nullptr;
-	bool Converter::EmptyMeshes = false;
-
+	void Converter::Log(const string msg)
+	{
+		if (m_OnLogCallback)
+		{
+			m_OnLogCallback(msg);
+		}
+	}
 
 	FbxNode* Converter::FindNode(MODL* model)
 	{
@@ -63,6 +70,12 @@ namespace MSH2FBX
 
 	bool Converter::Start(const fs::path& fbxFilePath)
 	{
+		if (Running)
+		{
+			Log("Cannot start Converter since it's already started!");
+			return false;
+		}
+
 		if (Scene != nullptr)
 		{
 			Log("Scene is not NULL!");
@@ -96,6 +109,7 @@ namespace MSH2FBX
 		// Create FBX Scene
 		Scene = FbxScene::Create(Manager, fbxFilePath.filename().u8string().c_str());
 		Scene->GetGlobalSettings().SetSystemUnit(FbxSystemUnit::m);
+		Running = true;
 		return true;
 	}
 
@@ -173,6 +187,11 @@ namespace MSH2FBX
 
 	void Converter::Close()
 	{
+		if (!Running)
+		{
+			return;
+		}
+
 		if (Scene == nullptr)
 		{
 			Log("Cannot close Scene since its NULL!");
@@ -194,6 +213,7 @@ namespace MSH2FBX
 
 		Mesh = nullptr;
 		FbxFilePath = "";
+		Running = false;
 	}
 
 	void Converter::MSHToFBXScene()
