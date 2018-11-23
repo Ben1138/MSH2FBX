@@ -11,8 +11,9 @@
 #include <algorithm>
 #include <functional>
 #include <map>
+#include <filesystem>
 
-namespace MSH2FBX
+namespace Converter
 {
 	using std::clamp;
 	using std::string;
