@@ -27,6 +27,11 @@ namespace Converter
 		}
 	}
 
+	void Converter::SetLogCallback(const LogCallback& Callback)
+	{
+		m_OnLogCallback = Callback;
+	}
+
 	FbxNode* Converter::FindNode(MODL* model)
 	{
 		if (model == nullptr)
@@ -106,6 +111,12 @@ namespace Converter
 		// Overall FBX (memory) manager
 		Manager = FbxManager::Create();
 
+		if (fs::exists(BaseposeMSH))
+		{
+			Basepose = MSH::Create();
+			Basepose->ReadFromFile(BaseposeMSH.u8string());
+		}
+
 		// Create FBX Scene
 		Scene = FbxScene::Create(Manager, fbxFilePath.filename().u8string().c_str());
 		Scene->GetGlobalSettings().SetSystemUnit(FbxSystemUnit::m);
@@ -113,7 +124,7 @@ namespace Converter
 		return true;
 	}
 
-	bool Converter::AddMSH(MSH* msh)
+	bool Converter::AddMSH(const fs::path& mshFilePath)
 	{
 		if (Mesh != nullptr)
 		{
@@ -121,8 +132,17 @@ namespace Converter
 			return false;
 		}
 
-		Mesh = msh;
+		if (!fs::exists(mshFilePath))
+		{
+			Log("Given MSH file '"+ mshFilePath.u8string() +"' does not exist!");
+			return false;
+		}
+
+		Mesh = MSH::Create();
+		Mesh->ReadFromFile(mshFilePath.u8string());
 		MSHToFBXScene();
+
+		MSH::Destroy(Mesh);
 		Mesh = nullptr;
 
 		return true;
@@ -202,6 +222,11 @@ namespace Converter
 		{
 			Log("Cannot close Scene since its NULL!");
 			return;
+		}
+
+		if (Basepose != nullptr)
+		{
+			MSH::Destroy(Basepose);
 		}
 
 		// Free all

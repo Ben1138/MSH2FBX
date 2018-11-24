@@ -32,11 +32,12 @@ namespace Converter
 		EModelPurpose ModelIgnoreFilter = EModelPurpose::Miscellaneous;
 		EChunkFilter ChunkFilter = EChunkFilter::None;
 		string OverrideAnimName = "";
-		MSH* Basepose = nullptr;
 		bool EmptyMeshes = false;
+		fs::path BaseposeMSH = "";
 
+		void SetLogCallback(const LogCallback& Callback);
 		bool Start(const fs::path& fbxFileName);
-		bool AddMSH(MSH* msh);
+		bool AddMSH(const fs::path& mshFileName);
 		bool Save();
 		void Close();
 
@@ -64,6 +65,7 @@ namespace Converter
 		FbxScene* Scene = nullptr;
 		FbxManager* Manager = nullptr;
 		FbxPose* Bindpose = nullptr;
+		MSH* Basepose = nullptr;
 
 		// Logging
 		void Log(const string msg);
