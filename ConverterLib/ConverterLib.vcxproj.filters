@@ -24,6 +24,9 @@
     <ClInclude Include="Converter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ConverterLib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="req.h">
       <Filter>Header Files</Filter>
     </ClInclude>
