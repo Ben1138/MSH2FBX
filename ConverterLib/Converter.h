@@ -1,6 +1,6 @@
 #pragma once
 
-namespace Converter
+namespace ConverterLib
 {
 	using namespace LibSWBF2::Logging;
 	using namespace LibSWBF2::Chunks::Mesh;
@@ -26,6 +26,8 @@ namespace Converter
 	public:
 		Converter() = default;
 		Converter(const fs::path& fbxFileName);
+		Converter(const Converter& converter) = delete;
+		Converter(const Converter&& converter) = delete;
 		~Converter();
 
 		// In filters, you specify what you DON'T want
@@ -38,7 +40,8 @@ namespace Converter
 		void SetLogCallback(const LogCallback& Callback);
 		bool Start(const fs::path& fbxFileName);
 		bool AddMSH(const fs::path& mshFileName);
-		bool Save();
+		bool SaveFBX();
+		bool ClearFBXScene();
 		void Close();
 
 	private:

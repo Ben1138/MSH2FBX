@@ -13,7 +13,7 @@
 #include <map>
 #include <filesystem>
 
-namespace Converter
+namespace ConverterLib
 {
 	using std::clamp;
 	using std::string;
@@ -23,3 +23,6 @@ namespace Converter
 	using std::function;
 	using std::map;
 }
+
+#include "LibSWBF2.h"
+#include "fbxsdk.h"

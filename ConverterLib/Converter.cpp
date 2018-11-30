@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Converter.h"
 
-namespace Converter
+namespace ConverterLib
 {
 	Converter::Converter(const fs::path& fbxFileName)
 	{
@@ -148,7 +148,7 @@ namespace Converter
 		return true;
 	}
 
-	bool Converter::Save()
+	bool Converter::SaveFBX()
 	{
 		if (Scene == nullptr)
 		{
@@ -199,10 +199,23 @@ namespace Converter
 			success = false;
 		}
 
-		// Free all		
+		// Free all
 		exporter->Destroy();
-		Close();
 		return success;
+	}
+
+	bool Converter::ClearFBXScene()
+	{
+		if (!Running)
+		{
+			Log("Cannot clear a not running Converter instance!");
+			return false;
+		}
+
+		fs::path p = FbxFilePath;
+		Close();
+		Start(p);
+		return true;
 	}
 
 	void Converter::Close()
@@ -211,7 +224,6 @@ namespace Converter
 		{
 			return;
 		}
-
 		if (Scene == nullptr)
 		{
 			Log("Cannot close Scene since its NULL!");
