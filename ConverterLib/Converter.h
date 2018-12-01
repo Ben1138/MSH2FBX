@@ -10,7 +10,7 @@ namespace ConverterLib
 	namespace fs = std::filesystem;
 
 	// Bit Flags
-	enum EChunkFilter
+	enum EChunkFilter : uint8_t
 	{
 		None = 0,
 		Materials = 1,
@@ -24,7 +24,7 @@ namespace ConverterLib
 	class Converter
 	{
 	public:
-		Converter() = default;
+		Converter();
 		Converter(const fs::path& fbxFileName);
 		Converter(const Converter& converter) = delete;
 		Converter(const Converter&& converter) = delete;
