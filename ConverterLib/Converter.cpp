@@ -3,15 +3,21 @@
 
 namespace ConverterLib
 {
-	Converter::Converter(const fs::path& fbxFileName)
+	Converter::Converter()
+	{
+		// pipe LibSWBF2 logs to our log
+		Logger::SetLogCallback([this](LoggerEntry entry)
+		{
+			if (entry.m_Level >= ELogType::Warning)
+			{
+				Log(entry.ToString());
+			}
+		});
+	}
+
+	Converter::Converter(const fs::path& fbxFileName) : Converter()
 	{
 		Start(fbxFileName);
-
-		// pipe LibSWBF2 logs to our log
-		Logger::SetLogCallback([this] (LoggerEntry entry) 
-		{
-			Log(entry.ToString());
-		});
 	}
 
 	Converter::~Converter()
