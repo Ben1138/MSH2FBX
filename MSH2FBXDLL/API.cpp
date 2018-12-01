@@ -73,6 +73,10 @@ namespace MSH2FBX
 		return converter->BaseposeMSH.u8string().c_str();
 	}
 
+	MSH2FBX_API void Converter_SetLogCallback(Converter* converter, const LogCallback Callback)
+	{
+		converter->SetLogCallback(ConverterLib::LogCallback([Callback](string msg) { Callback(msg.c_str()); }));
+	}
 
 	MSH2FBX_API bool Converter_Start(Converter* converter, const char* fbxFileName)
 	{
