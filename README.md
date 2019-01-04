@@ -3,11 +3,16 @@
 This tool converts Meshes, Skeletons and Animations from Pandemics mesh format (MSH2), used in the old Star Wars Battlefront (2004, 2005) series, into Autodesks FBX format which is known by all major Game Engines and 3D Modelling Software.
 
 ## How to use
-run ```MSH2FBX.exe --help``` in a Terminal to see all available options.
+1. Download latest build from [Releases](https://github.com/Ben1138/MSH2FBX/releases)
+2. Extract
+3. Run ```MSH2FBX.exe --help``` in a Terminal to see all available options.
 <br /><br />
 Be carefull with the Ignoring Options regarding Points and Bones (Skeleton)! They might brake parentships and result in an useless FBX!<br />
 Meshes should be safe to ignore though.
-
+<br /><br />
+###Example
+```MSH2FBX.exe -m rep_inf_ep3trooper.msh -i Mesh_ShadowVolume```
+This will convert rep_inf_ep3trooper.msh (lieing in the same directory as MSH2FBX.exe) to rep_inf_ep3trooper.fbx, ignoring Shadow Volumes.
 ## Pull and Compile
 The folowing process is described for Visual Studio 2017 in x64 release mode. For other build modes, adapt the options respectively.
 <br />
