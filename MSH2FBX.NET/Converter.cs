@@ -13,6 +13,35 @@ namespace MSH2FBX
         Error = 2
     }
 
+    // Bitmap flags
+    public enum EModelPurpose : ushort
+    {
+        // Unknown
+        Miscellaneous = 0,
+
+        // Meshes
+        Mesh = 63,
+        Mesh_Regular = 1,
+        Mesh_Lowrez = 2,
+        Mesh_Collision = 4,
+        Mesh_VehicleCollision = 8,
+        Mesh_ShadowVolume = 16,
+        Mesh_TerrainCut = 32,
+
+        // Just Points
+        Point = 448,
+        Point_EmptyTransform = 64,
+        Point_DummyRoot = 128,
+        Point_HardPoint = 256,
+
+        // Skeleton
+        Skeleton = 7680,
+        Skeleton_Root = 512,
+        Skeleton_BoneRoot = 1024,
+        Skeleton_BoneLimb = 2048,
+        Skeleton_BoneEnd = 4096,
+    };
+
     // Bit Flags
     public enum EChunkFilter : byte
     {
@@ -33,10 +62,16 @@ namespace MSH2FBX
 
         IntPtr Instance;
 
+        public EModelPurpose ModelFilter
+        {
+            get { return (EModelPurpose)APIWrapper.Converter_Get_ModelIgnoreFilter(Instance); }
+            set { APIWrapper.Converter_Set_ModelIgnoreFilter(Instance, (ushort)value); }
+        }
+
         public EChunkFilter ChunkFilter
         {
-            get { return APIWrapper.Converter_Get_ChunkFilter(Instance); }
-            set { APIWrapper.Converter_Set_ChunkFilter(Instance, value); }
+            get { return (EChunkFilter)APIWrapper.Converter_Get_ChunkFilter(Instance); }
+            set { APIWrapper.Converter_Set_ChunkFilter(Instance, (byte)value); }
         }
 
         public string OverrideAnimName
@@ -86,7 +121,12 @@ namespace MSH2FBX
 
         public bool AddMSH(string mshFileName)
         {
-            return APIWrapper.Converter_AddMSH(Instance, mshFileName);
+            return APIWrapper.Converter_AddMSHFromPath(Instance, mshFileName);
+        }
+
+        public bool AddMSH(IntPtr MshPtr)
+        {
+            return APIWrapper.Converter_AddMSHFromPtr(Instance, MshPtr);
         }
 
         public bool SaveFBX()

@@ -23,19 +23,19 @@ namespace MSH2FBX
 
         // PROPERTIES //
         [DllImport("MSH2FBX")]
-        public static extern void Converter_Set_ModelIgnoreFilter(IntPtr converter, int filter);
+        public static extern void Converter_Set_ModelIgnoreFilter(IntPtr converter, ushort filter);
 
         [DllImport("MSH2FBX")]
-        public static extern int Converter_Get_ModelIgnoreFilter(IntPtr converter);
+        public static extern ushort Converter_Get_ModelIgnoreFilter(IntPtr converter);
 
         [DllImport("MSH2FBX")]
-        public static extern void Converter_Set_ChunkFilter(IntPtr converter, EChunkFilter filter);
+        public static extern void Converter_Set_ChunkFilter(IntPtr converter, byte filter);
 
         [DllImport("MSH2FBX")]
-        public static extern EChunkFilter Converter_Get_ChunkFilter(IntPtr converter);
+        public static extern byte Converter_Get_ChunkFilter(IntPtr converter);
 
         [DllImport("MSH2FBX")]
-        public static extern EChunkFilter Converter_Set_OverrideAnimName(IntPtr converter, [MarshalAs(UnmanagedType.LPStr)] string animName);
+        public static extern void Converter_Set_OverrideAnimName(IntPtr converter, [MarshalAs(UnmanagedType.LPStr)] string animName);
 
         [DllImport("MSH2FBX")]
         [return:MarshalAs(UnmanagedType.LPStr)]
@@ -62,7 +62,10 @@ namespace MSH2FBX
         public static extern bool Converter_Start(IntPtr converter, [MarshalAs(UnmanagedType.LPStr)] string fbxFileName);
 
         [DllImport("MSH2FBX")]
-        public static extern bool Converter_AddMSH(IntPtr converter, [MarshalAs(UnmanagedType.LPStr)] string mshFileName);
+        public static extern bool Converter_AddMSHFromPath(IntPtr converter, [MarshalAs(UnmanagedType.LPStr)] string mshFileName);
+
+        [DllImport("MSH2FBX")]
+        public static extern bool Converter_AddMSHFromPtr(IntPtr converter, IntPtr msh);
 
         [DllImport("MSH2FBX")]
         public static extern bool Converter_SaveFBX(IntPtr converter);

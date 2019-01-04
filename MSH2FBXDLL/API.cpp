@@ -19,23 +19,23 @@ namespace MSH2FBX
 	}
 
 
-	MSH2FBX_API void Converter_Set_ModelIgnoreFilter(Converter* converter, const EModelPurpose filter)
+	MSH2FBX_API void Converter_Set_ModelIgnoreFilter(Converter* converter, const uint16_t filter)
 	{
-		converter->ModelIgnoreFilter = filter;
+		converter->ModelIgnoreFilter = (LibSWBF2::Chunks::Mesh::EModelPurpose)filter;
 	}
 
-	MSH2FBX_API EModelPurpose Converter_Get_ModelIgnoreFilter(const Converter* converter)
+	MSH2FBX_API uint16_t Converter_Get_ModelIgnoreFilter(const Converter* converter)
 	{
 		return converter->ModelIgnoreFilter;
 	}
 
 
-	MSH2FBX_API void Converter_Set_ChunkFilter(Converter* converter, const EChunkFilter filter)
+	MSH2FBX_API void Converter_Set_ChunkFilter(Converter* converter, const uint8_t filter)
 	{
-		converter->ChunkFilter = filter;
+		converter->ChunkFilter = (ConverterLib::EChunkFilter)filter;
 	}
 
-	MSH2FBX_API EChunkFilter Converter_Get_ChunkFilter(const Converter* converter)
+	MSH2FBX_API uint8_t Converter_Get_ChunkFilter(const Converter* converter)
 	{
 		return converter->ChunkFilter;
 	}
@@ -83,9 +83,14 @@ namespace MSH2FBX
 		return converter->Start(fs::path(fbxFileName));
 	}
 
-	MSH2FBX_API bool Converter_AddMSH(Converter* converter, const char* mshFileName)
+	MSH2FBX_API bool Converter_AddMSHFromPath(Converter* converter, const char* mshFileName)
 	{
 		return converter->AddMSH(fs::path(mshFileName));
+	}
+
+	MSH2FBX_API bool Converter_AddMSHFromPtr(Converter* converter, MSH* msh)
+	{
+		return converter->AddMSH(msh);
 	}
 
 	MSH2FBX_API bool Converter_SaveFBX(Converter* converter)
