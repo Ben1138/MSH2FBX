@@ -136,7 +136,7 @@ namespace ConverterLib
 	{
 		if (Mesh != nullptr)
 		{
-			Log("MSH is not NULL!", ELogType::Error);
+			Log("Converting Mesh is not NULL!", ELogType::Error);
 			return false;
 		}
 
@@ -153,6 +153,26 @@ namespace ConverterLib
 		MSH::Destroy(Mesh);
 		Mesh = nullptr;
 
+		return true;
+	}
+
+	bool Converter::AddMSH(MSH* msh)
+	{
+		if (Mesh != nullptr)
+		{
+			Log("Converting Mesh is not NULL!", ELogType::Error);
+			return false;
+		}
+
+		if (msh == nullptr)
+		{
+			Log("Given MSH pointer is NULL!", ELogType::Error);
+			return false;
+		}
+
+		Mesh = msh;
+		MSHToFBXScene();
+		Mesh = nullptr;
 		return true;
 	}
 
