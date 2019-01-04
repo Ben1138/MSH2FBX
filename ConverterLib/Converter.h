@@ -2,11 +2,13 @@
 
 namespace ConverterLib
 {
-	using namespace LibSWBF2::Logging;
 	using namespace LibSWBF2::Chunks::Mesh;
 	using namespace LibSWBF2::Types;
 	using LibSWBF2::CRC;
 	using LibSWBF2::CRCChecksum;
+	using LibSWBF2::Logging::ELogType;
+	using LibSWBF2::Logging::Logger;
+	using LibSWBF2::Logging::LoggerEntry;
 	namespace fs = std::filesystem;
 
 	// Bit Flags
@@ -19,7 +21,7 @@ namespace ConverterLib
 		Weights = 8
 	};
 
-	typedef function<void(string)> LogCallback;
+	typedef void(*LogCallback)(const char* msg, const uint8_t type);
 
 	class Converter
 	{
@@ -37,7 +39,7 @@ namespace ConverterLib
 		bool EmptyMeshes = false;
 		fs::path BaseposeMSH = "";
 
-		void SetLogCallback(const LogCallback& Callback);
+		static void SetLogCallback(const LogCallback Callback);
 		bool Start(const fs::path& fbxFileName);
 		bool AddMSH(const fs::path& mshFileName);
 		bool SaveFBX();
@@ -71,7 +73,8 @@ namespace ConverterLib
 		MSH* Basepose = nullptr;
 
 		// Logging
-		void Log(const string msg);
-		LogCallback m_OnLogCallback;
+		static void ReceiveLogFromLib(const LoggerEntry* entry);
+		static void Log(const string msg, ELogType type);
+		static LogCallback OnLogCallback;
 	};
 }

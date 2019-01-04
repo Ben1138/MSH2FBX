@@ -3,16 +3,18 @@
 
 namespace ConverterLib
 {
+	LogCallback Converter::OnLogCallback = nullptr;
+
 	Converter::Converter()
 	{
 		// pipe LibSWBF2 logs to our log
-		Logger::SetLogCallback([this](LoggerEntry entry)
-		{
-			if (entry.m_Level >= ELogType::Warning)
-			{
-				Log(entry.ToString());
-			}
-		});
+		Logger::SetLogfileLevel(ELogType::Warning);
+		Logger::SetLogCallback(&ReceiveLogFromLib);
+	}
+
+	void Converter::ReceiveLogFromLib(const LoggerEntry* entry)
+	{
+		Log(entry->ToString(), (ELogType)entry->m_Level);
 	}
 
 	Converter::Converter(const fs::path& fbxFileName) : Converter()
@@ -25,24 +27,24 @@ namespace ConverterLib
 		Close();
 	}
 
-	void Converter::Log(const string msg)
+	void Converter::Log(const string msg, ELogType type)
 	{
-		if (m_OnLogCallback)
+		if (OnLogCallback)
 		{
-			m_OnLogCallback(msg);
+			OnLogCallback(msg.c_str(), (uint8_t)type);
 		}
 	}
 
-	void Converter::SetLogCallback(const LogCallback& Callback)
+	void Converter::SetLogCallback(const LogCallback Callback)
 	{
-		m_OnLogCallback = Callback;
+		OnLogCallback = Callback;
 	}
 
 	FbxNode* Converter::FindNode(MODL* model)
 	{
 		if (model == nullptr)
 		{
-			Log("Given MODL pointer was NULL!");
+			Log("Given MODL pointer was NULL!", ELogType::Error);
 			return nullptr;
 		}
 
@@ -56,7 +58,7 @@ namespace ConverterLib
 			}
 			else
 			{
-				Log("MODL '" + model->m_Parent.m_Text + "' has been mapped to NULL!");
+				Log("MODL '" + model->m_Parent.m_Text + "' has been mapped to NULL!", ELogType::Error);
 				return nullptr;
 			}
 		}
@@ -71,7 +73,7 @@ namespace ConverterLib
 		{
 			if (!it->second)
 			{
-				Log("CRC '" + std::to_string(checksum) + "' has been mapped to null pointer!");
+				Log("CRC '" + std::to_string(checksum) + "' has been mapped to null pointer!", ELogType::Warning);
 				return nullptr;
 			}
 			return it->second;
@@ -83,31 +85,31 @@ namespace ConverterLib
 	{
 		if (Running)
 		{
-			Log("Cannot start Converter since it's already started!");
+			Log("Cannot start Converter since it's already started!", ELogType::Error);
 			return false;
 		}
 
 		if (Scene != nullptr)
 		{
-			Log("Scene is not NULL!");
+			Log("Scene is not NULL!", ELogType::Error);
 			return false;
 		}
 
 		if (Manager != nullptr)
 		{
-			Log("Manager is not NULL!");
+			Log("Manager is not NULL!", ELogType::Error);
 			return false;
 		}
 
 		if (Mesh != nullptr)
 		{
-			Log("Still a MSH present!");
+			Log("Still a MSH present!", ELogType::Error);
 			return false;
 		}
 
 		if (FbxFilePath != "")
 		{
-			Log("Still a Fbx File Name present!");
+			Log("Still a Fbx File Name present!", ELogType::Error);
 		}
 
 		MODLToFbxNode.clear();
@@ -134,13 +136,13 @@ namespace ConverterLib
 	{
 		if (Mesh != nullptr)
 		{
-			Log("MSH is not NULL!");
+			Log("MSH is not NULL!", ELogType::Error);
 			return false;
 		}
 
 		if (!fs::exists(mshFilePath))
 		{
-			Log("Given MSH file '"+ mshFilePath.u8string() +"' does not exist!");
+			Log("Given MSH file '"+ mshFilePath.u8string() +"' does not exist!", ELogType::Error);
 			return false;
 		}
 
@@ -158,25 +160,25 @@ namespace ConverterLib
 	{
 		if (Scene == nullptr)
 		{
-			Log("Scene is NULL!");
+			Log("Scene is NULL!", ELogType::Error);
 			return false;
 		}
 
 		if (Manager == nullptr)
 		{
-			Log("Manager is NULL!");
+			Log("Manager is NULL!", ELogType::Error);
 			return false;
 		}
 
 		if (Mesh != nullptr)
 		{
-			Log("There is still a MSH in progress!");
+			Log("There is still a MSH in progress!", ELogType::Error);
 			return false;
 		}
 
 		if (FbxFilePath == "")
 		{
-			Log("No Fbx File Name present!");
+			Log("No Fbx File Name present!", ELogType::Error);
 		}
 
 		bool success = true;
@@ -195,13 +197,13 @@ namespace ConverterLib
 			exporter->SetFileExportVersion(FBX_2011_00_COMPATIBLE);
 			if (!exporter->Export(Scene, false))
 			{
-				Log("Exporting failed!\n" + string(exporter->GetStatus().GetErrorString()));
+				Log("Exporting failed!\n" + string(exporter->GetStatus().GetErrorString()), ELogType::Error);
 				success = false;
 			}
 		}
 		else
 		{
-			Log("Initializing export failed!\n" + string(exporter->GetStatus().GetErrorString()));
+			Log("Initializing export failed!\n" + string(exporter->GetStatus().GetErrorString()), ELogType::Error);
 			success = false;
 		}
 
@@ -214,7 +216,7 @@ namespace ConverterLib
 	{
 		if (!Running)
 		{
-			Log("Cannot clear a not running Converter instance!");
+			Log("Cannot clear a not running Converter instance!", ELogType::Error);
 			return false;
 		}
 
@@ -232,13 +234,13 @@ namespace ConverterLib
 		}
 		if (Scene == nullptr)
 		{
-			Log("Cannot close Scene since its NULL!");
+			Log("Cannot close Scene since its NULL!", ELogType::Error);
 			return;
 		}
 
 		if (Manager == nullptr)
 		{
-			Log("Cannot close Scene since its NULL!");
+			Log("Cannot close Scene since its NULL!", ELogType::Error);
 			return;
 		}
 
@@ -302,7 +304,7 @@ namespace ConverterLib
 					// Create and attach Mesh
 					else if (!MODLToFBXMesh(model, Mesh->m_MeshBlock.m_MaterialList, modelNode))
 					{
-						Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
+						Log("Failed to convert MSH Model to FBX Mesh. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType), ELogType::Warning);
 						continue;
 					}
 				}
@@ -311,7 +313,7 @@ namespace ConverterLib
 					// Create FBXSkeleton (Bones)
 					if (!MODLToFBXSkeleton(model, modelNode))
 					{
-						Log("Failed to convert MSH Model to FBX Skeleton. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType));
+						Log("Failed to convert MSH Model to FBX Skeleton. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType), ELogType::Warning);
 						continue;
 					}
 
@@ -338,7 +340,7 @@ namespace ConverterLib
 				FbxNode* modelNode = FindNode(model);
 				if (modelNode == nullptr)
 				{
-					Log("No FbxNode has been created for MODL '" + model->m_Parent.m_Text + "' ! This should never happen!");
+					Log("No FbxNode has been created for MODL '" + model->m_Parent.m_Text + "' ! This should never happen!", ELogType::Error);
 					continue;
 				}
 
@@ -355,7 +357,7 @@ namespace ConverterLib
 					}
 					else
 					{
-						Log("Parent Node '" + model->m_Parent.m_Text + "' not found!");
+						Log("Parent Node '" + model->m_Parent.m_Text + "' not found!", ELogType::Warning);
 					}
 				}
 
@@ -381,17 +383,17 @@ namespace ConverterLib
 
 						if (boneNode == nullptr)
 						{
-							Log("Could not find a Bone for CRC: " + std::to_string(BoneFrames[i].m_CRCchecksum));
+							Log("Could not find a Bone for CRC: " + std::to_string(BoneFrames[i].m_CRCchecksum), ELogType::Warning);
 							continue;
 						}
 
 						if (BoneFrames[i].m_TranslationFrames.size() == 0)
 						{
-							Log("Given Basepose file does not contain any Bone Translation Data!");
+							Log("Given Basepose file does not contain any Bone Translation Data!", ELogType::Warning);
 						}
 						else if (BoneFrames[i].m_RotationFrames.size() == 0)
 						{
-							Log("Given Basepose file does not contain any Bone Rotation Data!");
+							Log("Given Basepose file does not contain any Bone Rotation Data!", ELogType::Warning);
 						}
 						else
 						{
@@ -420,7 +422,7 @@ namespace ConverterLib
 				}
 				else
 				{
-					Log("Given Basepose file does not contain any Frame Data!");
+					Log("Given Basepose file does not contain any Frame Data!", ELogType::Warning);
 				}
 			}
 
@@ -436,7 +438,7 @@ namespace ConverterLib
 				FbxNode* modelNode = FindNode(model);
 				if (modelNode == nullptr)
 				{
-					Log("No FbxNode has been created for MODL '" + model->m_Parent.m_Text + "' ! This should never happen!");
+					Log("No FbxNode has been created for MODL '" + model->m_Parent.m_Text + "' ! This should never happen!", ELogType::Error);
 					continue;
 				}
 
@@ -526,7 +528,7 @@ namespace ConverterLib
 	{
 		if (Mesh == nullptr)
 		{
-			Log("Mesh (MSH) is NULL!");
+			Log("Mesh (MSH) is NULL!", ELogType::Error);
 			return;
 		}
 
@@ -560,7 +562,7 @@ namespace ConverterLib
 
 						if (BoneNode == nullptr)
 						{
-							Log("Could not find a Bone '"+bone.m_Name.m_Text+"' for CRC: " + std::to_string(crc));
+							Log("Could not find a Bone '"+bone.m_Name.m_Text+"' for CRC: " + std::to_string(crc), ELogType::Warning);
 							continue;
 						}
 
@@ -600,17 +602,17 @@ namespace ConverterLib
 						}
 						else
 						{
-							Log("MODL (Bone) '" + bone.m_Parent.m_Text + "' has been mapped to NULL!");
+							Log("MODL (Bone) '" + bone.m_Parent.m_Text + "' has been mapped to NULL!", ELogType::Warning);
 						}
 					}
 					else
 					{
-						Log("Model Index " + std::to_string(envelope.m_ModelIndices[i]) + " is out of Range " + std::to_string(Mesh->m_MeshBlock.m_Models.size()));
+						Log("Model Index " + std::to_string(envelope.m_ModelIndices[i]) + " is out of Range " + std::to_string(Mesh->m_MeshBlock.m_Models.size()), ELogType::Warning);
 					}
 				}
 				else
 				{
-					Log("Envelope Index " + std::to_string(weight.m_EnvelopeIndex) + " is out of Range " + std::to_string(envelope.m_ModelIndices.size()));
+					Log("Envelope Index " + std::to_string(weight.m_EnvelopeIndex) + " is out of Range " + std::to_string(envelope.m_ModelIndices.size()), ELogType::Warning);
 				}
 			}
 		}
@@ -620,7 +622,7 @@ namespace ConverterLib
 	{
 		if (animations.m_AnimationCycle.m_Animations.size() == 0)
 		{
-			Log("No Animation Circle found!");
+			Log("No Animation Circle found!", ELogType::Warning);
 			return;
 		}
 
@@ -645,7 +647,7 @@ namespace ConverterLib
 
 			if (boneNode == nullptr)
 			{
-				Log("Could not find a Bone for CRC: " + std::to_string(bf.m_CRCchecksum));
+				Log("Could not find a Bone for CRC: " + std::to_string(bf.m_CRCchecksum), ELogType::Warning);
 				continue;
 			}
 
@@ -700,13 +702,13 @@ namespace ConverterLib
 	{
 		if (Manager == nullptr)
 		{
-			Log("FbxManager is NULL!");
+			Log("FbxManager is NULL!", ELogType::Error);
 			return false;
 		}
 
 		if (meshNode == nullptr)
 		{
-			Log("Given FbxNode is NULL!");
+			Log("Given FbxNode is NULL!", ELogType::Error);
 			return false;
 		}
 
@@ -738,13 +740,13 @@ namespace ConverterLib
 	{
 		if (Manager == nullptr)
 		{
-			Log("FbxManager is NULL!");
+			Log("FbxManager is NULL!", ELogType::Error);
 			return false;
 		}
 
 		if (meshNode == nullptr)
 		{
-			Log("Given FbxNode is NULL!");
+			Log("Given FbxNode is NULL!", ELogType::Error);
 			return false;
 		}
 
@@ -796,7 +798,7 @@ namespace ConverterLib
 
 						if ((ChunkFilter & EChunkFilter::Materials) == 0 && !MATDToFBXMaterial(mshMat, meshNode, fbxMatIndex))
 						{
-							Log("Could not convert MSH Material '" + mshMat.m_Name.m_Text + "' to FbxMaterial!");
+							Log("Could not convert MSH Material '" + mshMat.m_Name.m_Text + "' to FbxMaterial!", ELogType::Warning);
 						}
 					}
 
@@ -814,7 +816,7 @@ namespace ConverterLib
 			}
 			else
 			{
-				Log("Inconsistent lengths of vertices and normals in Segment No: " + std::to_string(i));
+				Log("Inconsistent lengths of vertices and normals in Segment No: " + std::to_string(i), ELogType::Warning);
 				mesh->Destroy(true);
 				mesh = nullptr;
 				return false;
@@ -858,13 +860,13 @@ namespace ConverterLib
 	{
 		if (Manager == nullptr)
 		{
-			Log("FbxManager is NULL!");
+			Log("FbxManager is NULL!", ELogType::Error);
 			return false;
 		}
 
 		if (boneNode == nullptr)
 		{
-			Log("Given FbxNode is NULL!");
+			Log("Given FbxNode is NULL!", ELogType::Error);
 			return false;
 		}
 
@@ -883,7 +885,7 @@ namespace ConverterLib
 				bone->SetSkeletonType(FbxSkeleton::eLimbNode);
 				break;
 			default:
-				Log("No suitable Bone Type found for '" + model.m_Name.m_Text + "' ! Model Type is: " + std::to_string((int)model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + std::to_string(purpose));
+				Log("No suitable Bone Type found for '" + model.m_Name.m_Text + "' ! Model Type is: " + std::to_string((int)model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + std::to_string(purpose), ELogType::Warning);
 				bone->Destroy();
 				return false;
 		}
