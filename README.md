@@ -10,7 +10,7 @@ This tool converts Meshes, Skeletons and Animations from Pandemics mesh format (
 Be carefull with the Ignoring Options regarding Points and Bones (Skeleton)! They might brake parentships and result in an useless FBX!<br />
 Meshes should be safe to ignore though.
 <br /><br />
-###Example
+### Example
 ```MSH2FBX.exe -m rep_inf_ep3trooper.msh -i Mesh_ShadowVolume```
 This will convert rep_inf_ep3trooper.msh (lieing in the same directory as MSH2FBX.exe) to rep_inf_ep3trooper.fbx, ignoring Shadow Volumes.
 ## Pull and Compile
