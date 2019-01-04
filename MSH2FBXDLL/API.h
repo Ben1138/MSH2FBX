@@ -9,10 +9,9 @@
 
 using ConverterLib::Converter;
 using ConverterLib::EChunkFilter;
+using ConverterLib::LogCallback;
 using LibSWBF2::Chunks::Mesh::EModelPurpose;
 namespace fs = std::filesystem;
-
-typedef void(*LogCallback)(const char* log);
 
 namespace MSH2FBX
 {
@@ -40,7 +39,7 @@ namespace MSH2FBX
 		MSH2FBX_API const char* Converter_Get_BaseposeMSH(const Converter* converter);
 
 		// METHODS //
-		MSH2FBX_API void Converter_SetLogCallback(Converter* converter, const LogCallback Callback);
+		MSH2FBX_API void Converter_SetLogCallback(const LogCallback Callback);
 		MSH2FBX_API bool Converter_Start(Converter* converter, const char* fbxFileName);
 		MSH2FBX_API bool Converter_AddMSH(Converter* converter, const char* mshFileName);
 		MSH2FBX_API bool Converter_SaveFBX(Converter* converter);
