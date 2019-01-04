@@ -6,6 +6,13 @@ using System.Threading.Tasks;
 
 namespace MSH2FBX
 {
+    public enum ELogType : byte
+    {
+        Info = 0,
+        Warning = 1,
+        Error = 2
+    }
+
     // Bit Flags
     public enum EChunkFilter : byte
     {
@@ -18,9 +25,13 @@ namespace MSH2FBX
 
     public class Converter
     {
+        public static Action<string, ELogType> OnLog;
+        static APIWrapper.LogCallback callback = new APIWrapper.LogCallback((string msg, byte type) => 
+        {
+            OnLog(msg, (ELogType)type);
+        });
+
         IntPtr Instance;
-        APIWrapper.LogCallback callback = new APIWrapper.LogCallback(OnLog);
-        public static Action<string> OnLog;
 
         public EChunkFilter ChunkFilter
         {
@@ -47,16 +58,19 @@ namespace MSH2FBX
         }
 
 
+        static Converter()
+        {
+            APIWrapper.Converter_SetLogCallback(callback);
+        }
+
         public Converter()
         {
             Instance = APIWrapper.Converter_Create();
-            APIWrapper.Converter_SetLogCallback(Instance, callback);
         }
 
         public Converter(string fbxFileName)
         {
             Instance = APIWrapper.Converter_Create_Start(fbxFileName);
-            APIWrapper.Converter_SetLogCallback(Instance, callback);
         }
 
         ~Converter()

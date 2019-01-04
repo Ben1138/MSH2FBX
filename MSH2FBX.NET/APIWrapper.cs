@@ -9,7 +9,7 @@ namespace MSH2FBX
     internal static class APIWrapper
     {
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void LogCallback([MarshalAs(UnmanagedType.LPStr)] string msg);
+        public delegate void LogCallback([MarshalAs(UnmanagedType.LPStr)] string msg, byte type);
 
         // CONSTRUCTORS - DESTRUCTOR //
         [DllImport("MSH2FBX")]
@@ -56,7 +56,7 @@ namespace MSH2FBX
 
         // METHODS //
         [DllImport("MSH2FBX")]
-        public static extern void Converter_SetLogCallback(IntPtr converter, LogCallback callback);
+        public static extern void Converter_SetLogCallback(LogCallback callback);
 
         [DllImport("MSH2FBX")]
         public static extern bool Converter_Start(IntPtr converter, [MarshalAs(UnmanagedType.LPStr)] string fbxFileName);

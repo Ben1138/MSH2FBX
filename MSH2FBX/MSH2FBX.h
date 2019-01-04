@@ -5,6 +5,7 @@ namespace MSH2FBX
 {
 	using ConverterLib::Converter;
 	using ConverterLib::EChunkFilter;
+	using ConverterLib::LogCallback;
 	using LibSWBF2::Chunks::Mesh::EModelPurpose;
 	namespace fs = std::filesystem;
 
@@ -12,6 +13,7 @@ namespace MSH2FBX
 
 	void Log(const char* msg);
 	void Log(const string& msg);
+	void ReceiveLogFromConverter(const char* msg, const uint8_t type);
 	void ShowProgress(const string& text, const float progress);
 	void FinishProgress(string FinMsg);
 
