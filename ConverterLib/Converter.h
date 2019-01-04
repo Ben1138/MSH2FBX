@@ -42,6 +42,7 @@ namespace ConverterLib
 		static void SetLogCallback(const LogCallback Callback);
 		bool Start(const fs::path& fbxFileName);
 		bool AddMSH(const fs::path& mshFileName);
+		bool AddMSH(MSH* msh);
 		bool SaveFBX();
 		bool ClearFBXScene();
 		void Close();
