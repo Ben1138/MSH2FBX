@@ -627,7 +627,7 @@ namespace ConverterLib
 					}
 					else
 					{
-						Log("Model Index " + std::to_string(envelope.m_ModelIndices[i]) + " is out of Range " + std::to_string(Mesh->m_MeshBlock.m_Models.size()), ELogType::Warning);
+						Log("Model Index " + std::to_string(envelope.m_ModelIndices[ei]) + " is out of Range " + std::to_string(Mesh->m_MeshBlock.m_Models.size()), ELogType::Warning);
 					}
 				}
 				else
