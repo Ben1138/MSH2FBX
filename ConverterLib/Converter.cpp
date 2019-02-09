@@ -27,7 +27,7 @@ namespace ConverterLib
 		Close();
 	}
 
-	void Converter::Log(const string msg, ELogType type)
+	void Converter::Log(const string& msg, ELogType type)
 	{
 		if (OnLogCallback)
 		{
@@ -58,7 +58,7 @@ namespace ConverterLib
 			}
 			else
 			{
-				Log("MODL '" + model->m_Parent.m_Text + "' has been mapped to NULL!", ELogType::Error);
+				Log("MODL '" + string(model->m_Parent.m_Text.Buffer()) + "' has been mapped to NULL!", ELogType::Error);
 				return nullptr;
 			}
 		}
@@ -294,13 +294,13 @@ namespace ConverterLib
 			// so we don't have to re-filter in the other loops again
 			vector<MODL*> processingModels;
 
-			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.size(); ++i)
+			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.Size(); ++i)
 			{
 				MODL& model = Mesh->m_MeshBlock.m_Models[i];
 				EModelPurpose purpose = model.GetEstimatedPurpose();
 
 				// generate crc checksum from name (should match those in msh file)
-				CRCChecksum crc = CRC::CalcLowerCRC(model.m_Name.m_Text.c_str());
+				CRCChecksum crc = CRC::CalcLowerCRC(model.m_Name.m_Text.Buffer());
 
 				// Do not process unwanted stuff
 				// Do not process the same Bone more than once
@@ -310,14 +310,14 @@ namespace ConverterLib
 				}
 
 				// Create Node to attach mesh to
-				FbxNode* modelNode = FbxNode::Create(Manager, model.m_Name.m_Text.c_str());
+				FbxNode* modelNode = FbxNode::Create(Manager, model.m_Name.m_Text.Buffer());
 				rootNode->AddChild(modelNode);
 
 				if ((purpose & EModelPurpose::Mesh) != 0)
 				{
 					if (EmptyMeshes)
 					{
-						FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.c_str());
+						FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.Buffer());
 						modelNode->AddNodeAttribute(mesh);
 					}
 
@@ -336,12 +336,10 @@ namespace ConverterLib
 						Log("Failed to convert MSH Model to FBX Skeleton. MODL No: " + std::to_string(i) + "  MTYP: " + std::to_string((int)model.m_ModelType.m_ModelType), ELogType::Warning);
 						continue;
 					}
-
-
 				}
 				else // everything else is just interpreted as a point with an empty mesh
 				{
-					FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.c_str());
+					FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.Buffer());
 					modelNode->AddNodeAttribute(mesh);
 				}
 
@@ -360,7 +358,7 @@ namespace ConverterLib
 				FbxNode* modelNode = FindNode(model);
 				if (modelNode == nullptr)
 				{
-					Log("No FbxNode has been created for MODL '" + model->m_Parent.m_Text + "' ! This should never happen!", ELogType::Error);
+					Log("No FbxNode has been created for MODL '" + string(model->m_Parent.m_Text.Buffer()) + "' ! This should never happen!", ELogType::Error);
 					continue;
 				}
 
@@ -368,7 +366,7 @@ namespace ConverterLib
 				if (model->m_Parent.m_Text != "")
 				{
 					// Get FBXNode of Parent
-					FbxNode* parentNode = rootNode->FindChild(model->m_Parent.m_Text.c_str());
+					FbxNode* parentNode = rootNode->FindChild(model->m_Parent.m_Text.Buffer());
 
 					if (parentNode != nullptr)
 					{
@@ -377,7 +375,7 @@ namespace ConverterLib
 					}
 					else
 					{
-						Log("Parent Node '" + model->m_Parent.m_Text + "' not found!", ELogType::Warning);
+						Log("Parent Node '" + string(model->m_Parent.m_Text.Buffer()) + "' not found!", ELogType::Warning);
 					}
 				}
 
@@ -393,11 +391,11 @@ namespace ConverterLib
 			// Apply Basepose to all Bones BEFORE applying Mesh Weights!
 			if (Basepose != nullptr)
 			{
-				vector<BoneFrames>& BoneFrames = Basepose->m_Animations.m_KeyFrames.m_BoneFrames;
-				if (BoneFrames.size() > 0)
+				List<BoneFrames>& BoneFrames = Basepose->m_Animations.m_KeyFrames.m_BoneFrames;
+				if (BoneFrames.Size() > 0)
 				{
 					// for every bone...
-					for (size_t i = 0; i < BoneFrames.size(); ++i)
+					for (size_t i = 0; i < BoneFrames.Size(); ++i)
 					{
 						FbxNode* boneNode = FindNode(BoneFrames[i].m_CRCchecksum);
 
@@ -407,11 +405,11 @@ namespace ConverterLib
 							continue;
 						}
 
-						if (BoneFrames[i].m_TranslationFrames.size() == 0)
+						if (BoneFrames[i].m_TranslationFrames.Size() == 0)
 						{
 							Log("Given Basepose file does not contain any Bone Translation Data!", ELogType::Warning);
 						}
-						else if (BoneFrames[i].m_RotationFrames.size() == 0)
+						else if (BoneFrames[i].m_RotationFrames.Size() == 0)
 						{
 							Log("Given Basepose file does not contain any Bone Rotation Data!", ELogType::Warning);
 						}
@@ -458,7 +456,7 @@ namespace ConverterLib
 				FbxNode* modelNode = FindNode(model);
 				if (modelNode == nullptr)
 				{
-					Log("No FbxNode has been created for MODL '" + model->m_Parent.m_Text + "' ! This should never happen!", ELogType::Error);
+					Log("No FbxNode has been created for MODL '" + string(model->m_Parent.m_Text.Buffer()) + "' ! This should never happen!", ELogType::Error);
 					continue;
 				}
 
@@ -468,14 +466,14 @@ namespace ConverterLib
 					size_t vertexOffset = 0;
 
 					// Go through all Mesh Segments, grabbing Weight data
-					for (size_t i = 0; i < model->m_Geometry.m_Segments.size(); ++i)
+					for (size_t i = 0; i < model->m_Geometry.m_Segments.Size(); ++i)
 					{
 						SEGM& segment = model->m_Geometry.m_Segments[i];
 						WGHTToFBXSkin(segment.m_WeightList, model->m_Geometry.m_Envelope, matrixMeshNode, vertexOffset, BoneToCluster);
-						vertexOffset += segment.m_VertexList.m_Vertices.size();
+						vertexOffset += segment.m_VertexList.m_Vertices.Size();
 					}
 
-					FbxSkin* skin = FbxSkin::Create(Scene, string(model->m_Name.m_Text + "_Skin").c_str());
+					FbxSkin* skin = FbxSkin::Create(Scene, (string(model->m_Name.m_Text.Buffer()) + "_Skin").c_str());
 
 					for (auto it = BoneToCluster.begin(); it != BoneToCluster.end(); it++)
 					{
@@ -553,12 +551,12 @@ namespace ConverterLib
 		}
 
 		// for each vertex...
-		for (size_t i = 0; i < weights.m_Weights.size(); ++i)
+		for (size_t i = 0; i < weights.m_Weights.Size(); ++i)
 		{
 			// each vertex consist of 4 weights (for 4 bones)
-			for (int j = 0; j < weights.m_Weights[i].size(); ++j)
+			for (int j = 0; j < weights.m_Weights[i].NUM_OF_WEIGHTS; ++j)
 			{
-				BoneWeight& weight = weights.m_Weights[i][j];
+				BoneWeight& weight = weights.m_Weights[i].m_BoneWeights[j];
 				uint32_t& ei = weight.m_EnvelopeIndex;
 
 				// Do not process if the weight is 0.0 anyway
@@ -566,10 +564,10 @@ namespace ConverterLib
 				{
 					continue;
 				}
-
-				if (ei < envelope.m_ModelIndices.size())
+				
+				if (ei < (uint32_t)envelope.m_ModelIndices.Size())
 				{
-					if (envelope.m_ModelIndices[ei] < Mesh->m_MeshBlock.m_Models.size())
+					if (envelope.m_ModelIndices[ei] < Mesh->m_MeshBlock.m_Models.Size())
 					{
 						// Here, we're looking at the Bone  of the Mesh file, not the Basepose file!
 						// Since the Bones from the Mesh File wont have been processed if a Basepose file
@@ -577,12 +575,12 @@ namespace ConverterLib
 						// won't yield any results. So we have to find the Bone via CRC
 						MODL& bone = Mesh->m_MeshBlock.m_Models[envelope.m_ModelIndices[ei]];
 
-						CRCChecksum crc = CRC::CalcLowerCRC(bone.m_Name.m_Text.c_str());
+						CRCChecksum crc = CRC::CalcLowerCRC(bone.m_Name.m_Text.Buffer());
 						FbxNode* BoneNode = FindNode(crc);
 
 						if (BoneNode == nullptr)
 						{
-							Log("Could not find a Bone '"+bone.m_Name.m_Text+"' for CRC: " + std::to_string(crc), ELogType::Warning);
+							Log("Could not find a Bone '" + string(bone.m_Name.m_Text.Buffer()) + "' for CRC: " + std::to_string(crc), ELogType::Warning);
 							continue;
 						}
 
@@ -606,7 +604,7 @@ namespace ConverterLib
 							}
 							else
 							{
-								cluster = FbxCluster::Create(Scene, string(bone.m_Name.m_Text + "_Cluster").c_str());
+								cluster = FbxCluster::Create(Scene, (string(bone.m_Name.m_Text.Buffer()) + "_Cluster").c_str());
 								cluster->SetLinkMode(FbxCluster::eTotalOne);
 								cluster->SetLink(BoneNode);
 								BoneToCluster[&bone] = cluster;
@@ -622,17 +620,17 @@ namespace ConverterLib
 						}
 						else
 						{
-							Log("MODL (Bone) '" + bone.m_Parent.m_Text + "' has been mapped to NULL!", ELogType::Warning);
+							Log("MODL (Bone) '" + string(bone.m_Parent.m_Text.Buffer()) + "' has been mapped to NULL!", ELogType::Warning);
 						}
 					}
 					else
 					{
-						Log("Model Index " + std::to_string(envelope.m_ModelIndices[ei]) + " is out of Range " + std::to_string(Mesh->m_MeshBlock.m_Models.size()), ELogType::Warning);
+						Log("Model Index " + std::to_string(envelope.m_ModelIndices[ei]) + " is out of Range " + std::to_string(Mesh->m_MeshBlock.m_Models.Size()), ELogType::Warning);
 					}
 				}
 				else
 				{
-					Log("Envelope Index " + std::to_string(weight.m_EnvelopeIndex) + " is out of Range " + std::to_string(envelope.m_ModelIndices.size()), ELogType::Warning);
+					Log("Envelope Index " + std::to_string(weight.m_EnvelopeIndex) + " is out of Range " + std::to_string(envelope.m_ModelIndices.Size()), ELogType::Warning);
 				}
 			}
 		}
@@ -640,7 +638,7 @@ namespace ConverterLib
 
 	void Converter::ANM2ToFBXAnimations(ANM2& animations)
 	{
-		if (animations.m_AnimationCycle.m_Animations.size() == 0)
+		if (animations.m_AnimationCycle.m_Animations.Size() == 0)
 		{
 			Log("No Animation Circle found!", ELogType::Warning);
 			return;
@@ -648,7 +646,7 @@ namespace ConverterLib
 
 		// assuming only one animation per msh, this should be temporary
 		Animation& anim = animations.m_AnimationCycle.m_Animations[0];
-		string& animName = OverrideAnimName != "" ? OverrideAnimName : anim.m_AnimationName;
+		string& animName = OverrideAnimName != "" ? OverrideAnimName : anim.m_AnimationName.Buffer();
 		FbxAnimStack* animStack = FbxAnimStack::Create(Scene, animName.c_str());
 
 		FbxTime start, end;
@@ -660,7 +658,7 @@ namespace ConverterLib
 		animStack->AddMember(animLayer);
 
 		// for every bone...
-		for (size_t i = 0; i < animations.m_KeyFrames.m_BoneFrames.size(); ++i)
+		for (size_t i = 0; i < animations.m_KeyFrames.m_BoneFrames.Size(); ++i)
 		{
 			BoneFrames& bf = animations.m_KeyFrames.m_BoneFrames[i];
 			FbxNode* boneNode = FindNode(bf.m_CRCchecksum);
@@ -679,7 +677,7 @@ namespace ConverterLib
 			tranCurveX->KeyModifyBegin();
 			tranCurveY->KeyModifyBegin();
 			tranCurveZ->KeyModifyBegin();
-			for (size_t j = 0; j < bf.m_TranslationFrames.size(); ++j)
+			for (size_t j = 0; j < bf.m_TranslationFrames.Size(); ++j)
 			{
 				TranslationFrame& tranFrame = bf.m_TranslationFrames[j];
 
@@ -701,7 +699,7 @@ namespace ConverterLib
 			rotCurveX->KeyModifyBegin();
 			rotCurveY->KeyModifyBegin();
 			rotCurveZ->KeyModifyBegin();
-			for (size_t j = 0; j < bf.m_RotationFrames.size(); ++j)
+			for (size_t j = 0; j < bf.m_RotationFrames.Size(); ++j)
 			{
 				RotationFrame& rotFrame = bf.m_RotationFrames[j];
 				FbxVector4 rot = QuaternionToEuler(rotFrame.m_Rotation);
@@ -732,18 +730,18 @@ namespace ConverterLib
 			return false;
 		}
 
-		matIndex = meshNode->GetMaterialIndex(material.m_Name.m_Text.c_str());
+		matIndex = meshNode->GetMaterialIndex(material.m_Name.m_Text.Buffer());
 
 		// Create Material if non existent
 		if (matIndex < 0)
 		{
-			FbxSurfacePhong* fbxMaterial = FbxSurfacePhong::Create(Scene, material.m_Name.m_Text.c_str());
+			FbxSurfacePhong* fbxMaterial = FbxSurfacePhong::Create(Scene, material.m_Name.m_Text.Buffer());
 			fbxMaterial->Diffuse.Set(ColorToFBXColor(material.m_Data.m_Diffuse));
 			fbxMaterial->Ambient.Set(ColorToFBXColor(material.m_Data.m_Ambient));
 			fbxMaterial->Specular.Set(ColorToFBXColor(material.m_Data.m_Specular));
 
-			FbxFileTexture* fbxTexture = FbxFileTexture::Create(Scene, material.m_Texture0.m_Text.c_str());
-			fbxTexture->SetFileName(material.m_Texture0.m_Text.c_str()); // Resource file is in current directory.
+			FbxFileTexture* fbxTexture = FbxFileTexture::Create(Scene, material.m_Texture0.m_Text.Buffer());
+			fbxTexture->SetFileName(material.m_Texture0.m_Text.Buffer()); // Resource file is in current directory.
 			fbxTexture->SetTextureUse(FbxTexture::eStandard);
 			fbxTexture->SetMappingType(FbxTexture::eUV);
 			fbxTexture->SetMaterialUse(FbxFileTexture::eModelMaterial);
@@ -770,7 +768,7 @@ namespace ConverterLib
 			return false;
 		}
 
-		FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.c_str());
+		FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.Buffer());
 
 		vector<FbxVector4> vertices;
 		vector<FbxVector4> normals;
@@ -780,14 +778,14 @@ namespace ConverterLib
 		vector<FbxCluster*> boneClusters;
 
 		// crawl all Segments
-		for (size_t i = 0; i < model.m_Geometry.m_Segments.size(); ++i)
+		for (size_t i = 0; i < model.m_Geometry.m_Segments.Size(); ++i)
 		{
 			SEGM& segment = model.m_Geometry.m_Segments[i];
 
-			if (segment.m_VertexList.m_Vertices.size() == segment.m_NormalList.m_Normals.size())
+			if (segment.m_VertexList.m_Vertices.Size() == segment.m_NormalList.m_Normals.Size())
 			{
 				// grab the segments vertices, normals and UVs
-				for (size_t j = 0; j < segment.m_VertexList.m_Vertices.size(); ++j)
+				for (size_t j = 0; j < segment.m_VertexList.m_Vertices.Size(); ++j)
 				{
 					Vector3& v = segment.m_VertexList.m_Vertices[j];
 					vertices.emplace_back(v.m_X, v.m_Y, v.m_Z);
@@ -796,7 +794,7 @@ namespace ConverterLib
 					normals.emplace_back(n.m_X, n.m_Y, n.m_Z);
 
 					// UVs are optional
-					if (j < segment.m_UVList.m_UVs.size())
+					if (j < segment.m_UVList.m_UVs.Size())
 					{
 						Vector2& uv = segment.m_UVList.m_UVs[j];
 						uvs.emplace_back(uv.m_X, uv.m_Y);
@@ -805,25 +803,29 @@ namespace ConverterLib
 
 				// convert MSH triangle strips to polygons
 				segment.m_TriangleList.CalcPolygons();
-				for (size_t j = 0; j < segment.m_TriangleList.m_Polygons.size(); ++j)
+				for (size_t j = 0; j < segment.m_TriangleList.m_Polygons.Size(); ++j)
 				{
 					auto& poly = segment.m_TriangleList.m_Polygons[j];
 
 					uint32_t& mshMatIndex = segment.m_MaterialIndex.m_MaterialIndex;
 					int fbxMatIndex = -1;
 
-					if (mshMatIndex >= 0 && mshMatIndex < materials.m_Materials.size())
+					if (mshMatIndex >= 0 && mshMatIndex < materials.m_Materials.Size())
 					{
 						MATD& mshMat = materials.m_Materials[segment.m_MaterialIndex.m_MaterialIndex];
 
 						if ((ChunkFilter & EChunkFilter::Materials) == 0 && !MATDToFBXMaterial(mshMat, meshNode, fbxMatIndex))
 						{
-							Log("Could not convert MSH Material '" + mshMat.m_Name.m_Text + "' to FbxMaterial!", ELogType::Warning);
+							Log("Could not convert MSH Material '" + string(mshMat.m_Name.m_Text.Buffer()) + "' to FbxMaterial!", ELogType::Warning);
 						}
+					}
+					else
+					{
+						Log("Material Index '" + std::to_string(mshMatIndex) + "' out of bounds " + std::to_string(materials.m_Materials.Size()), ELogType::Warning);
 					}
 
 					mesh->BeginPolygon(fbxMatIndex);
-					for (size_t k = 0; k < poly.m_VertexIndices.size(); ++k)
+					for (size_t k = 0; k < poly.m_VertexIndices.Size(); ++k)
 					{
 						mesh->AddPolygon((int)(poly.m_VertexIndices[k] + vertexOffset));
 					}
@@ -832,7 +834,7 @@ namespace ConverterLib
 
 				// since in MSH vertices are local in their respective segments,
 				// we have to store an offset because in FBX vertices are global
-				vertexOffset += segment.m_VertexList.m_Vertices.size();
+				vertexOffset += segment.m_VertexList.m_Vertices.Size();
 			}
 			else
 			{
@@ -891,7 +893,7 @@ namespace ConverterLib
 		}
 
 		EModelPurpose purpose = model.GetEstimatedPurpose();
-		FbxSkeleton* bone = FbxSkeleton::Create(Manager, model.m_Name.m_Text.c_str());
+		FbxSkeleton* bone = FbxSkeleton::Create(Manager, model.m_Name.m_Text.Buffer());
 		bone->Size.Set(1.0f);
 
 		switch (purpose)
@@ -905,7 +907,7 @@ namespace ConverterLib
 				bone->SetSkeletonType(FbxSkeleton::eLimbNode);
 				break;
 			default:
-				Log("No suitable Bone Type found for '" + model.m_Name.m_Text + "' ! Model Type is: " + std::to_string((int)model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + std::to_string(purpose), ELogType::Warning);
+				Log("No suitable Bone Type found for '" + string(model.m_Name.m_Text.Buffer()) + "' ! Model Type is: " + std::to_string((int)model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + std::to_string(purpose), ELogType::Warning);
 				bone->Destroy();
 				return false;
 		}

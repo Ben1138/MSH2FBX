@@ -75,7 +75,7 @@ namespace ConverterLib
 
 		// Logging
 		static void ReceiveLogFromLib(const LoggerEntry* entry);
-		static void Log(const string msg, ELogType type);
+		static void Log(const string& msg, ELogType type);
 		static LogCallback OnLogCallback;
 	};
 }
