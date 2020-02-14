@@ -40,6 +40,77 @@ namespace ConverterLib
 		OnLogCallback = Callback;
 	}
 
+	void Converter::CheckHierarchy()
+	{
+		if (Scene == nullptr)
+		{
+			Log("Current FBX Scene is NULL!", ELogType::Error);
+			return;
+		}
+
+		vector<FbxNode*> processedNodes;
+		function<void(FbxNode*,uint32_t)> checkHierarchyRecursive = [&](FbxNode* node, uint32_t depth)
+		{
+			if (node == nullptr)
+			{
+				Log("Given FbxNode is NULL!", ELogType::Error);
+				return;
+			}
+
+			if (depth > 1000)
+			{
+				Log("Max recursion depth of 1000 reached, abort! Parentship circle?", ELogType::Error);
+				return;
+			}
+
+			if (bPrintHierachy)
+			{
+				string concat = " ";
+				for (uint32_t i = 0; i < depth; ++i)
+				{
+					concat += " ";
+				}
+				Log(concat + node->GetName(), ELogType::Info);
+			}
+
+			int numChildren = node->GetChildCount();
+			for (int i = 0; i < numChildren; ++i)
+			{
+				FbxNode* child = node->GetChild(i);
+				if (child == nullptr)
+				{
+					Log("Child of '" + string(node->GetName()) + "' was NULL!", ELogType::Error);
+					continue;
+				}
+
+				if (std::find(processedNodes.begin(), processedNodes.end(), child) != processedNodes.end())
+				{
+					Log("Parentship circle detected! Node '" + string(child->GetName()) + "' was already processed!", ELogType::Error);
+					Log("Parent of '"+string(child->GetName())+"' is '"+ string(node->GetName()) +"'", ELogType::Info);
+					continue;
+				}
+
+				FbxNode* parent = child->GetParent();
+				if (parent != node)
+				{
+					if (parent == nullptr)
+					{
+						Log("Inconsistent hierarchy! Node '"+string(child->GetName())+"' is child of '" + string(node->GetName()) + "', but the child's parent is NULL!", ELogType::Error);
+					}
+					else
+					{
+						Log("Inconsistent hierarchy! Node '" + string(child->GetName()) + "' is child of '" + string(node->GetName()) + "', but the child's parent is '" + string(parent->GetName()) + "'!", ELogType::Error);
+					}
+				}
+
+				processedNodes.emplace_back(child);
+				checkHierarchyRecursive(child, depth + 1);
+			}
+		};
+
+		checkHierarchyRecursive(Scene->GetRootNode(), 0);
+	}
+
 	FbxNode* Converter::FindNode(MODL* model)
 	{
 		if (model == nullptr)
@@ -83,7 +154,7 @@ namespace ConverterLib
 
 	bool Converter::Start(const fs::path& fbxFilePath)
 	{
-		if (Running)
+		if (bRunning)
 		{
 			Log("Cannot start Converter since it's already started!", ELogType::Error);
 			return false;
@@ -128,7 +199,7 @@ namespace ConverterLib
 		// Create FBX Scene
 		Scene = FbxScene::Create(Manager, fbxFilePath.filename().u8string().c_str());
 		Scene->GetGlobalSettings().SetSystemUnit(FbxSystemUnit::m);
-		Running = true;
+		bRunning = true;
 		return true;
 	}
 
@@ -212,6 +283,12 @@ namespace ConverterLib
 		settings->SetBoolProp(EXP_FBX_GLOBAL_SETTINGS, true);
 		Manager->SetIOSettings(settings);
 
+		if (bPrintHierachy)
+		{
+			Log("Hierarchy of '"+ FbxFilePath.u8string() +"':", ELogType::Info);
+		}
+		CheckHierarchy();
+
 		if (exporter->Initialize(FbxFilePath.u8string().c_str(), -1, Manager->GetIOSettings()))
 		{
 			exporter->SetFileExportVersion(FBX_2011_00_COMPATIBLE);
@@ -234,7 +311,7 @@ namespace ConverterLib
 
 	bool Converter::ClearFBXScene()
 	{
-		if (!Running)
+		if (!bRunning)
 		{
 			Log("Cannot clear a not running Converter instance!", ELogType::Error);
 			return false;
@@ -248,7 +325,7 @@ namespace ConverterLib
 
 	void Converter::Close()
 	{
-		if (!Running)
+		if (!bRunning)
 		{
 			return;
 		}
@@ -278,7 +355,7 @@ namespace ConverterLib
 
 		Mesh = nullptr;
 		FbxFilePath = "";
-		Running = false;
+		bRunning = false;
 	}
 
 	void Converter::MSHToFBXScene()
@@ -315,7 +392,7 @@ namespace ConverterLib
 
 				if ((purpose & EModelPurpose::Mesh) != 0)
 				{
-					if (EmptyMeshes)
+					if (bEmptyMeshes)
 					{
 						FbxMesh* mesh = FbxMesh::Create(Manager, model.m_Name.m_Text.Buffer());
 						modelNode->AddNodeAttribute(mesh);
@@ -370,6 +447,7 @@ namespace ConverterLib
 
 					if (parentNode != nullptr)
 					{
+						//Log(parentNode->GetName() + string(" --> ") + modelNode->GetName(), ELogType::Info);
 						rootNode->RemoveChild(modelNode);
 						parentNode->AddChild(modelNode);
 					}

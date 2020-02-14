@@ -12,11 +12,12 @@ namespace ConverterLib
 	namespace fs = std::filesystem;
 
 	// Bit Flags
+	// Set a flag for all types you DON't want to be handled (filtered out)
 	enum EChunkFilter : uint8_t
 	{
 		None = 0,
 		Materials = 1,
-		Models = 2,
+		Models = 2,			// includes empty nodes, bones, etc.
 		Animations = 4,
 		Weights = 8
 	};
@@ -36,7 +37,8 @@ namespace ConverterLib
 		EModelPurpose ModelIgnoreFilter = EModelPurpose::Miscellaneous;
 		EChunkFilter ChunkFilter = EChunkFilter::None;
 		string OverrideAnimName = "";
-		bool EmptyMeshes = false;
+		bool bEmptyMeshes = false;
+		bool bPrintHierachy = false;
 		fs::path BaseposeMSH = "";
 
 		static void SetLogCallback(const LogCallback Callback);
@@ -63,9 +65,10 @@ namespace ConverterLib
 		bool MATDToFBXMaterial(const MATD& material, FbxNode* meshNode, int& matIndex);
 		bool MODLToFBXMesh(MODL& model, MATL& materials, FbxNode* meshNode);
 		bool MODLToFBXSkeleton(MODL& model, FbxNode* boneNode);
+		void CheckHierarchy();
 
 		// Current State
-		bool Running = false;
+		bool bRunning = false;
 		fs::path FbxFilePath;
 		MSH* Mesh = nullptr;
 		FbxScene* Scene = nullptr;

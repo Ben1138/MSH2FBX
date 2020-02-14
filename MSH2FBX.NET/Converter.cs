@@ -43,11 +43,12 @@ namespace MSH2FBX
     };
 
     // Bit Flags
+    // Set a flag for all types you DON't want to be handled (filtered out)
     public enum EChunkFilter : byte
     {
         None = 0,
         Materials = 1,
-        Models = 2,
+        Models = 2,			// includes empty nodes, bones, etc.
         Animations = 4,
         Weights = 8
     }
