@@ -109,6 +109,9 @@
     <ProjectReference Include="..\ConverterLib\ConverterLib.vcxproj">
       <Project>{90b94b47-6d3f-4945-992b-6db363852e99}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\MSH2FBX\MSH2FBX.vcxproj">
+      <Project>{fc0ad977-9e04-4493-949c-25f7e51e9698}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
