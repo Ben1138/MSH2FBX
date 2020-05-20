@@ -17,11 +17,11 @@ Meshes should be safe to ignore though.
 <br /><br />
 
 ### Examples
-This will convert rep_inf_ep3trooper.msh (lying in the same directory as MSH2FBX.exe) to rep_inf_ep3trooper.fbx, ignoring Shadow Volumes:
+This will convert rep_inf_ep3trooper.msh (lying in the same directory as MSH2FBX.exe) to rep_inf_ep3trooper.fbx, ignoring Shadow Volumes:<br />
 ```MSH2FBX.exe -m rep_inf_ep3trooper.msh -i Mesh_ShadowVolume```
 <br />
-This will convert the ep3trooper mesh including all trooper animations into a single fbx (Change the BF2_ModTools accordingly of course):
-```MSH2FBX.exe -m rep_inf_ep3trooper.msh -b basepose.msh -oa "C:\BF2_ModTools\assets\Animations\SoldierAnimationBank\human_0" -d rep_inf_ep3trooper.fbx -i Mesh_Lowrez Mesh_ShadowVolume```
+This will convert the ep3trooper mesh including all trooper animations into a single fbx (Change the BF2_ModTools accordingly of course):<br />
+```MSH2FBX.exe -m rep_inf_ep3trooper.msh -b basepose.msh -oa "C:\BF2_ModTools\assets\Animations\SoldierAnimationBank\human_0" -d rep_inf_ep3trooper.fbx -i Mesh_Lowrez Mesh_ShadowVolume```<br />
 Note: The ```-i Mesh_Lowrez Mesh_ShadowVolume``` options will ignore all LOD and shadow volume meshes.
 <br /><br />
 
