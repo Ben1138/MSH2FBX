@@ -84,7 +84,7 @@ namespace MSH2FBX
 			return mshFiles;
 		}
 
-		for (auto& p : fs::directory_iterator(Directory))
+		for (auto p : fs::directory_iterator(Directory))
 		{
 			if (p.path().extension() == Extension)
 			{
@@ -93,7 +93,7 @@ namespace MSH2FBX
 
 			if (recursive && p.is_directory())
 			{
-				vector<fs::path>& next = GetFiles(p.path(), Extension, recursive);
+				const vector<fs::path>& next = GetFiles(p.path(), Extension, recursive);
 				mshFiles.insert(mshFiles.end(), next.begin(), next.end());
 			}
 		}
@@ -103,13 +103,13 @@ namespace MSH2FBX
 	vector<fs::path> GetFiles(const vector<fs::path>& Paths, const string& Extension, const bool recursive)
 	{
 		vector<fs::path> files;
-		for (auto& it = Paths.begin(); it != Paths.end(); ++it)
+		for (auto it = Paths.begin(); it != Paths.end(); ++it)
 		{
 			if (fs::exists(*it))
 			{
 				if (fs::is_directory(*it))
 				{
-					vector<fs::path>& next = GetFiles(*it, Extension, recursive);
+					const vector<fs::path>& next = GetFiles(*it, Extension, recursive);
 					files.insert(files.end(), next.begin(), next.end());
 				}
 				else if (fs::is_regular_file(*it))
@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
 	CLI::Option* printOpt = app.add_flag("-p,--print-hierarchy", "Print the hierarchy of the resulting FBX file(s).");
 
 	string filterOptionInfo = "What to ignore. Options are:\n";
-	for (auto& it = filterMap.begin(); it != filterMap.end(); ++it)
+	for (auto it = filterMap.begin(); it != filterMap.end(); ++it)
 	{
 		filterOptionInfo += "\t\t\t\t" + it->first + "\n";
 	}
@@ -324,7 +324,7 @@ int main(int argc, char *argv[])
 	converter.ModelIgnoreFilter = (EModelPurpose)0;
 	for (auto it = filter.begin(); it != filter.end(); ++it)
 	{
-		auto& filterIT = filterMap.find(*it);
+		auto filterIT = filterMap.find(*it);
 		if (filterIT != filterMap.end())
 		{
 			// ugly... |= operator does not work here
@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
 
 	// Import Models first (specified with -m), ignoring Animations
 	converter.ChunkFilter = EChunkFilter::Animations;
-	for (auto& it = models.begin(); it != models.end(); ++it)
+	for (auto it = models.begin(); it != models.end(); ++it)
 	{
 		ShowProgress((*it).filename().u8string(), (float)(fileCounter++) / numFiles);
 		if (ProcessMSH(*it, overrideAnimName, converter, !singleFbxFile))
@@ -349,7 +349,7 @@ int main(int argc, char *argv[])
 
 	// Import complete Files second (specified with -f). These can include both, Models and Animations
 	converter.ChunkFilter = EChunkFilter::None;
-	for (auto& it = files.begin(); it != files.end(); ++it)
+	for (auto it = files.begin(); it != files.end(); ++it)
 	{
 		ShowProgress((*it).filename().u8string(), (float)(fileCounter++) / numFiles);
 		if (ProcessMSH(*it, overrideAnimName, converter, !singleFbxFile))
@@ -360,7 +360,7 @@ int main(int argc, char *argv[])
 
 	// Import Animations at last (specified with -a), so all Bones will be there
 	converter.ChunkFilter = EChunkFilter::Models;
-	for (auto& it = animations.begin(); it != animations.end(); ++it)
+	for (auto it = animations.begin(); it != animations.end(); ++it)
 	{
 		ShowProgress((*it).filename().u8string(), (float)(fileCounter++) / numFiles);
 		if (ProcessMSH(*it, overrideAnimName, converter, !singleFbxFile))

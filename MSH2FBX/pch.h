@@ -21,4 +21,4 @@ namespace MSH2FBX
 }
 
 #include "CLI11.hpp"
-#include "..\ConverterLib\ConverterLib.h"
+#include "../ConverterLib/ConverterLib.h"
