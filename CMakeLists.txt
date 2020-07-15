@@ -23,7 +23,9 @@ else()
 	add_executable(msh2fbx)
 endif()
 
-target_include_directories(msh2fbx PUBLIC /home/will/projects/swbf2wine/libSWBF2ENCODING/LibSWBF2)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+
+target_include_directories(msh2fbx PUBLIC /home/will/projects/swbf2wine/libSWBF2ENCODING/LibSWBF2/)
 
 set_property(TARGET msh2fbx PROPERTY CXX_STANDARD 17)
 set_property(TARGET msh2fbx PROPERTY CXX_STANDARD_REQUIRED ON)
@@ -65,13 +67,6 @@ target_sources(msh2fbx PUBLIC ${SOURCE_FILES})
 #LINKING
 
 if(APPLE)
-	target_link_options(msh2fbx PUBLIC -undefined dynamic_lookup)
-else()
-	target_link_libraries(msh2fbx PUBLIC -ldl)
-	target_link_libraries(msh2fbx PUBLIC "-Wl,--no-as-needed")
-endif()
-
-if(APPLE)
 	target_link_directories(msh2fbx PUBLIC /usr/local/lib/)
 else()
 	target_link_directories(msh2fbx PUBLIC /usr/lib/x86_64-linux-gnu)
@@ -89,3 +84,14 @@ target_link_libraries(msh2fbx PUBLIC fmt)
 target_link_libraries(msh2fbx PUBLIC glm_static)
 target_link_libraries(msh2fbx PUBLIC -lpthread)
 target_link_libraries(msh2fbx PUBLIC m)
+
+
+
+
+if(APPLE)
+	target_link_options(msh2fbx PUBLIC -undefined dynamic_lookup)
+else()
+	#DL must be linked last...seems like something cmake should've understood
+	target_link_libraries(msh2fbx PUBLIC dl)
+	target_link_libraries(msh2fbx PUBLIC "-Wl,--no-as-needed")
+endif()
