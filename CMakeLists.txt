@@ -5,9 +5,9 @@ project(MSH2FBX)
 
 #[[
 
-To build, make sure you have a path variable "LIBSWBF2_DIR" set to "LibSWBF2" directory from the
-original rep.  CMake will use that var to find the necessary header files, and assumes the 
-library you built will be in "${LIBSWBF2_DIR}/build."  If that var isn't set, or the "build" dir 
+To build, make sure you have a path variable "LIBSWBF2DIR" set to the "LibSWBF2" subdirectory of the
+libSWBF2 repo.  CMake will use that var to find the necessary header files, and assumes the 
+library you built will be in "${LIBSWBF2DIR}/build."  If that var isn't set, or the "build" dir 
 doesn't exist, CMake will look for the headers and lib in your default search paths.
 
 ]]
