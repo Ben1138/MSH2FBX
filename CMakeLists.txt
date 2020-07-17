@@ -3,6 +3,15 @@ cmake_minimum_required(VERSION 3.2)
 project(MSH2FBX)
 
 
+#[[
+
+To build, make sure you have a path variable "LIBSWBF2_DIR" set to "LibSWBF2" directory from the
+original rep.  CMake will use that var to find the necessary header files, and assumes the 
+library you built will be in "${LIBSWBF2_DIR}/build."  If that var isn't set, or the "build" dir 
+doesn't exist, CMake will look for the headers and lib in your default search paths.
+
+]]
+
 
 #SETTINGS
 
@@ -58,4 +67,4 @@ if (NOT ${LIBSWBF2_DIR} EQUAL "")
 	target_link_directories(msh2fbx PUBLIC "${LIBSWBF2_DIR}/build")
 endif()
 
-target_link_libraries(msh2fbx PUBLIC fbxsdk fmt pthread swbf2)
+target_link_libraries(msh2fbx PUBLIC fbxsdk fmt pthread SWBF2)
