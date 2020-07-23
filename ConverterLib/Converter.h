@@ -2,11 +2,12 @@
 
 namespace ConverterLib
 {
-	using namespace LibSWBF2::Chunks::Mesh;
+	using namespace LibSWBF2::Chunks::MSH;
 	using namespace LibSWBF2::Types;
 	using LibSWBF2::CRC;
 	using LibSWBF2::CRCChecksum;
-	using LibSWBF2::Logging::ELogType;
+	using LibSWBF2::ELogType;
+	using LibSWBF2::EModelPurpose;
 	using LibSWBF2::Logging::Logger;
 	using LibSWBF2::Logging::LoggerEntry;
 	namespace fs = std::filesystem;

@@ -14,7 +14,7 @@ namespace ConverterLib
 
 	void Converter::ReceiveLogFromLib(const LoggerEntry* entry)
 	{
-		Log(entry->ToString(), (ELogType)entry->m_Level);
+		Log(entry->ToString().Buffer(), (ELogType)entry->m_Level);
 	}
 
 	Converter::Converter(const fs::path& fbxFileName) : Converter()
@@ -193,7 +193,7 @@ namespace ConverterLib
 		if (fs::exists(BaseposeMSH))
 		{
 			Basepose = MSH::Create();
-			Basepose->ReadFromFile(BaseposeMSH.u8string());
+			Basepose->ReadFromFile(BaseposeMSH.u8string().c_str());
 		}
 
 		// Create FBX Scene
@@ -218,7 +218,7 @@ namespace ConverterLib
 		}
 
 		Mesh = MSH::Create();
-		Mesh->ReadFromFile(mshFilePath.u8string());
+		Mesh->ReadFromFile(mshFilePath.u8string().c_str());
 		MSHToFBXScene();
 
 		MSH::Destroy(Mesh);
@@ -374,7 +374,7 @@ namespace ConverterLib
 			for (size_t i = 0; i < Mesh->m_MeshBlock.m_Models.Size(); ++i)
 			{
 				MODL& model = Mesh->m_MeshBlock.m_Models[i];
-				EModelPurpose purpose = model.GetEstimatedPurpose();
+				EModelPurpose purpose = model.GetPurpose();
 
 				// generate crc checksum from name (should match those in msh file)
 				CRCChecksum crc = CRC::CalcLowerCRC(model.m_Name.m_Text.Buffer());
@@ -430,7 +430,7 @@ namespace ConverterLib
 			for (size_t i = 0; i < processingModels.size(); ++i)
 			{
 				MODL* model = processingModels[i];
-				EModelPurpose purpose = model->GetEstimatedPurpose();
+				EModelPurpose purpose = model->GetPurpose();
 
 				FbxNode* modelNode = FindNode(model);
 				if (modelNode == nullptr)
@@ -529,7 +529,7 @@ namespace ConverterLib
 			for (size_t i = 0; i < processingModels.size(); ++i)
 			{
 				MODL* model = processingModels[i];
-				EModelPurpose purpose = model->GetEstimatedPurpose();
+				EModelPurpose purpose = model->GetPurpose();
 				
 				FbxNode* modelNode = FindNode(model);
 				if (modelNode == nullptr)
@@ -970,7 +970,7 @@ namespace ConverterLib
 			return false;
 		}
 
-		EModelPurpose purpose = model.GetEstimatedPurpose();
+		EModelPurpose purpose = model.GetPurpose();
 		FbxSkeleton* bone = FbxSkeleton::Create(Manager, model.m_Name.m_Text.Buffer());
 		bone->Size.Set(1.0f);
 
@@ -985,7 +985,7 @@ namespace ConverterLib
 				bone->SetSkeletonType(FbxSkeleton::eLimbNode);
 				break;
 			default:
-				Log("No suitable Bone Type found for '" + string(model.m_Name.m_Text.Buffer()) + "' ! Model Type is: " + std::to_string((int)model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + std::to_string(purpose), ELogType::Warning);
+				Log("No suitable Bone Type found for '" + string(model.m_Name.m_Text.Buffer()) + "' ! Model Type is: " + std::to_string((int)model.m_ModelType.m_ModelType) + "  Estimated Model Purpose is: " + ModelPurposeToString(purpose).Buffer(), ELogType::Warning);
 				bone->Destroy();
 				return false;
 		}
