@@ -6,7 +6,7 @@ namespace MSH2FBX
 	using ConverterLib::Converter;
 	using ConverterLib::EChunkFilter;
 	using ConverterLib::LogCallback;
-	using LibSWBF2::Chunks::Mesh::EModelPurpose;
+	using LibSWBF2::EModelPurpose;
 	namespace fs = std::filesystem;
 
 	static bool IsInProgress = false;
