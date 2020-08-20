@@ -1,5 +1,22 @@
 cmake_minimum_required(VERSION 3.2)
 
+#
+# BUILD NOTES
+#
+
+#[[
+
+Make sure you have LIBSWBF2_INCLUDE and LIBSWBF2_LIB set as environment 
+vars pointing to your libSWBF2 headers and libraries respectively, unless
+you already have them in your path.  I should get around to adding a proper
+install or pkg-config setup for libSWBF2 and all dependant projects.  If you
+have issues building w/CMake on Linux or Mac, drop an issue and tag
+WHSnyder.
+
+]]
+
+
+
 project(MSH2FBX)
 
 
