@@ -23,10 +23,9 @@ project(MSH2FBX)
 #SETTINGS
 
 add_executable(msh2fbx)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 set_property(TARGET msh2fbx PROPERTY CXX_STANDARD 17)
 set_property(TARGET msh2fbx PROPERTY CXX_STANDARD_REQUIRED ON)
+
 
 
 #SOURCES
@@ -35,7 +34,6 @@ if(APPLE)
 	target_include_directories(msh2fbx PUBLIC /usr/local/include)
 endif()
 
-#Lazy, but works for a project this simple
 file(GLOB MSH_FILES MSH2FBX/*.cpp ConverterLib/*.cpp MSH2FBXDLL/*.cpp)
 target_sources(msh2fbx PUBLIC ${MSH_FILES})
 
@@ -51,11 +49,11 @@ else()
 endif()
 
 
+
 #LINKING
 
 #Redundant/harmless additions to catch underconfigured systems...
 if (APPLE)
-	include_directories(/usr/local/include)
 	target_link_options(msh2fbx PUBLIC -undefined dynamic_lookup)
 	target_link_directories(msh2fbx PUBLIC /usr/local/lib/)
 else()
